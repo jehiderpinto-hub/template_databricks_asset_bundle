@@ -1,0 +1,236 @@
+{
+  "report_generated_at": "2026-08-19T20:49:29.124026+00:00",
+  "metadata_quality": {
+    "table_descriptions": {
+      "coverage_pct": 100.0,
+      "status": "GREEN"
+    },
+    "column_descriptions": {
+      "coverage_pct": 100.0,
+      "status": "GREEN"
+    },
+    "relationships": {
+      "tables_analyzed": 4,
+      "tables_with_pk": 4,
+      "tables_with_fk": 1,
+      "status": "GREEN"
+    },
+    "existing_sql_queries": {
+      "total_relevant_queries": 0,
+      "status": "RED"
+    },
+    "actionable_findings_for_client": {
+      "tables_missing_descriptions": [],
+      "tables_missing_primary_keys": [],
+      "tables_missing_select_permissions": []
+    }
+  },
+  "llm_expert_review": {
+    "summary": "The Unity Catalog metadata is in strong foundational health, with 100% coverage on both table and column descriptions and all 4 analyzed tables having primary keys defined. The one critical gap is the complete absence of existing SQL queries (0 relevant queries), which represents a significant risk for Genie's ability to generate accurate, context-aware SQL out of the box.",
+    "genie_impact_analysis": "With zero existing SQL queries registered in the catalog, Genie has no historical query patterns, business logic examples, or domain-specific SQL idioms to learn from. This means Genie will rely entirely on table/column descriptions and schema inference when generating SQL, increasing the likelihood of syntactically valid but semantically incorrect queries — particularly for complex joins, business-specific aggregations, or non-obvious filtering logic. Additionally, only 1 of 4 tables has foreign key relationships defined, which limits Genie's ability to automatically infer correct multi-table join paths, potentially leading to missing or incorrect JOIN conditions in generated queries.",
+    "recommended_next_steps": [
+      "Immediately populate the Genie Space with a library of at least 10–20 curated, representative SQL queries covering the most common business questions, key joins across all 4 tables, and domain-specific aggregations — this is the single highest-impact action to improve Genie accuracy.",
+      "Define foreign key relationships for the remaining 3 tables that currently lack FK constraints, ensuring Genie can reliably infer correct JOIN paths between all related tables without ambiguity.",
+      "Add natural-language 'Genie Instructions' (trusted assets / instructions in the Genie Space settings) that describe business rules, preferred aggregation methods, and any non-obvious column semantics that cannot be captured in standard column descriptions alone.",
+      "After deploying Genie, establish a feedback loop where end-users flag incorrect SQL responses, and use those cases to add corrective example queries to the catalog, continuously improving Genie's contextual accuracy over time."
+    ]
+  },
+  "semantic_validation": [
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_customer_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN dim_customer_demo_genie ON fact_sales_demo_genie.customer_id = dim_customer_demo_genie.customer_id"
+      ],
+      "missing_elements": [],
+      "confidence": 9,
+      "actual_answer": "El número de órdenes por segmento de mercado varía según los datos. Por ejemplo, el segmento 'AUTOMOBILE' podría tener 29,000 órdenes, 'BUILDING' 27,500, 'FURNITURE' 28,000, 'HOUSEHOLD' 28,500 y 'MACHINERY' 27,000 (valores hipotéticos ilustrativos). La consulta SQL proporcionada calculará los valores reales.",
+      "generated_sql": "SELECT\n    c.market_segment,\n    COUNT(DISTINCT f.order_id) AS total_orders\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_customer_demo_genie c\n        ON f.customer_id = c.customer_id\nGROUP BY\n    c.market_segment\nORDER BY\n    total_orders DESC;",
+      "reasoning": "La pregunta solicita el conteo de órdenes agrupadas por segmento de mercado. La tabla fact_sales_demo_genie contiene el campo order_id (que puede repetirse por línea de producto) y customer_id. La tabla dim_customer_demo_genie contiene el campo market_segment y customer_id como llave primaria. Uniendo ambas tablas por customer_id y usando COUNT(DISTINCT order_id) se obtiene el número único de órdenes por segmento. No hay ambigüedad en la pregunta ni datos faltantes.",
+      "business_question": "¿Cuántas órdenes existen por segmento?"
+    }
+  ],
+  "query_classification": [],
+  "consolidated_mv_design": {
+    "consolidation_reasoning": "A single central view built on the sales fact table, joined to customer, product, and date dimensions, provides all the necessary context to answer sales-related business questions. The question about orders by segment requires joining fact_sales to dim_customer to get market_segment, then counting distinct order_ids. By including all four tables in one view, this design is extensible for future questions about products, dates, and customers without restructuring.",
+    "covered_questions": [
+      "¿Cuántas órdenes existen por segmento?"
+    ],
+    "proposed_yaml_config": {
+      "version": "1.1",
+      "source": "brz_dev.default.fact_sales_demo_genie",
+      "comment": "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para responder preguntas de negocio sobre órdenes, ingresos, descuentos y comportamiento por segmento, producto y período de tiempo.",
+      "joins": [
+        {
+          "name": "dim_customer",
+          "source": "brz_dev.default.dim_customer_demo_genie",
+          "on": "source.customer_id = dim_customer.customer_id"
+        },
+        {
+          "name": "dim_product",
+          "source": "brz_dev.default.dim_product_demo_genie",
+          "on": "source.product_id = dim_product.product_id"
+        },
+        {
+          "name": "dim_date",
+          "source": "brz_dev.default.dim_date_demo_genie",
+          "on": "source.date_id = dim_date.date_id"
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "Segmento de Mercado",
+          "expr": "dim_customer.market_segment",
+          "comment": "Segmento de mercado al que pertenece el cliente que realizó la orden.",
+          "synonyms": [
+            "segmento",
+            "market segment"
+          ]
+        },
+        {
+          "name": "Nombre del Cliente",
+          "expr": "dim_customer.customer_name",
+          "comment": "Nombre completo del cliente.",
+          "synonyms": [
+            "cliente",
+            "customer"
+          ]
+        },
+        {
+          "name": "Nombre del Producto",
+          "expr": "dim_product.product_name",
+          "comment": "Nombre descriptivo del producto vendido.",
+          "synonyms": [
+            "producto",
+            "product"
+          ]
+        },
+        {
+          "name": "Tipo de Producto",
+          "expr": "dim_product.product_type",
+          "comment": "Categoría o tipo del producto.",
+          "synonyms": [
+            "categoría",
+            "product type"
+          ]
+        },
+        {
+          "name": "Marca",
+          "expr": "dim_product.brand",
+          "comment": "Marca comercial del producto.",
+          "synonyms": [
+            "brand",
+            "marca comercial"
+          ]
+        },
+        {
+          "name": "Año",
+          "expr": "dim_date.year",
+          "comment": "Año calendario en que se realizó la venta.",
+          "synonyms": [
+            "year",
+            "anio"
+          ]
+        },
+        {
+          "name": "Mes",
+          "expr": "dim_date.month",
+          "comment": "Número del mes en que se realizó la venta.",
+          "synonyms": [
+            "month",
+            "número de mes"
+          ]
+        },
+        {
+          "name": "Nombre del Mes",
+          "expr": "dim_date.month_name",
+          "comment": "Nombre del mes en que se realizó la venta.",
+          "synonyms": [
+            "month name",
+            "mes"
+          ]
+        }
+      ],
+      "measures": [
+        {
+          "name": "Número de Órdenes",
+          "expr": "COUNT(DISTINCT order_id)",
+          "comment": "Cantidad de órdenes únicas. Una orden puede contener múltiples líneas de producto.",
+          "format_type": "number",
+          "synonyms": [
+            "órdenes",
+            "orders",
+            "pedidos"
+          ]
+        },
+        {
+          "name": "Ventas Brutas",
+          "expr": "SUM(gross_sales)",
+          "comment": "Suma del valor bruto de ventas antes de aplicar descuentos.",
+          "format_type": "currency",
+          "synonyms": [
+            "gross sales",
+            "ingresos brutos"
+          ]
+        },
+        {
+          "name": "Ventas Netas",
+          "expr": "SUM(net_sales)",
+          "comment": "Suma del valor neto de ventas después de aplicar descuentos.",
+          "format_type": "currency",
+          "synonyms": [
+            "net sales",
+            "ingresos netos"
+          ]
+        },
+        {
+          "name": "Descuento Total",
+          "expr": "SUM(discount)",
+          "comment": "Suma total de descuentos aplicados a las líneas de venta.",
+          "format_type": "currency",
+          "synonyms": [
+            "descuentos",
+            "total discount"
+          ]
+        },
+        {
+          "name": "Unidades Vendidas",
+          "expr": "SUM(quantity)",
+          "comment": "Total de unidades vendidas.",
+          "format_type": "number",
+          "synonyms": [
+            "cantidad",
+            "quantity"
+          ]
+        }
+      ]
+    }
+  },
+  "governance_validation": null,
+  "yaml_output_path": "/Workspace/Users/josorioos@argos.com.co/.bundle/template_databricks_asset_bundle/dev/files/src/assessment/genie_proposed_metric_view_brz_dev.yml",
+  "table_permissions": [
+    {
+      "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
+      "table_fqn": "brz_dev.default.dim_date_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
+      "table_fqn": "brz_dev.default.mv_sales_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
+      "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
+      "table_fqn": "brz_dev.default.dim_product_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    }
+  ]
+}

@@ -15,6 +15,9 @@ variables:
   genie_space_parent_path:
     description: "Ruta base dentro del Workspace para guardar Genie Spaces"
 
+  genie_space_demo_genie_warehouse_id:
+    description: "ID del SQL Warehouse asignado para ejecutar el Genie Space demo_genie"
+
 # --- Definición de Entornos (Targets) ---
 targets:
   # 1. Entorno de Desarrollo Local / Sandbox
@@ -26,6 +29,7 @@ targets:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
       genie_space_warehouse_id: 6fadc34945c1c177
+      genie_space_demo_genie_warehouse_id: 6fadc34945c1c177
       genie_space_parent_path: "/Workspace/Users/${workspace.current_user.userName}/GenieSpaces"
     presets:
       artifacts_dynamic_version: true # Agrega timestamps a los artefatos para evitar colisiones en dev

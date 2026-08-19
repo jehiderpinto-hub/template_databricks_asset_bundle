@@ -5,6 +5,24 @@ import shutil
 import subprocess
 import sys
 
+import yaml
+
+
+def normalize_genie_resource_file_path(resource_file: str) -> None:
+    with open(resource_file, encoding="utf-8") as file:
+        resource = yaml.safe_load(file)
+
+    genie_spaces = resource.get("resources", {}).get("genie_spaces", {})
+    for genie_space in genie_spaces.values():
+        file_path = genie_space.get("file_path")
+        if file_path:
+            genie_space["file_path"] = (
+                "../../src/genie_spaces/" + os.path.basename(file_path)
+            )
+
+    with open(resource_file, "w", encoding="utf-8") as file:
+        yaml.safe_dump(resource, file, allow_unicode=True, sort_keys=False)
+
 
 def generate_and_organize_genie_space(genie_space_id: str, profile: str = None):
     root_dir = os.getcwd()
@@ -49,6 +67,7 @@ def generate_and_organize_genie_space(genie_space_id: str, profile: str = None):
             filename = os.path.basename(filepath)
             dest = os.path.join(target_resources_dir, filename)
             shutil.move(filepath, dest)
+            normalize_genie_resource_file_path(dest)
             print(f"Importado: {filename} -> resources/genie_spaces/")
 
     # Mover archivos creados en 'src/' a 'src/genie_spaces/'

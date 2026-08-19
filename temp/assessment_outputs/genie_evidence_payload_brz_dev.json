@@ -1,0 +1,835 @@
+{
+  "payload_version": "1.5",
+  "payload_type": "metadata_quality_evidence_input",
+  "assessment_type": "Databricks Genie Technical Readiness Assessment",
+  "assessment_phase": "metadata_quality_mvp",
+  "generated_at": "2026-08-19T20:48:54.234645+00:00",
+  "scope": {
+    "catalogs": [
+      "brz_dev"
+    ],
+    "schemas": [
+      "default"
+    ],
+    "target_tables": [
+      "brz_dev.default.dim_customer_demo_genie",
+      "brz_dev.default.dim_date_demo_genie",
+      "brz_dev.default.dim_product_demo_genie",
+      "brz_dev.default.fact_sales_demo_genie",
+      "brz_dev.default.mv_sales_demo_genie"
+    ],
+    "warehouse_id": "${var.genie_space_demo_genie_warehouse_id}",
+    "llm_endpoint": "databricks-claude-sonnet-4-6",
+    "business_questions": [
+      "¿Cuántas órdenes existen por segmento?"
+    ],
+    "use_cases": []
+  },
+  "target_table_inventory": {
+    "requested_table_count": 5,
+    "metadata_found_table_count": 4,
+    "requested_tables_missing_from_metadata": [
+      "brz_dev.default.mv_sales_demo_genie"
+    ]
+  },
+  "global_metrics": {
+    "table_metadata": {
+      "total_tables": 4,
+      "tables_with_comment": 4,
+      "technical_table_names": 0,
+      "table_comment_coverage_pct": 100.0
+    },
+    "column_metadata": {
+      "tables_analyzed": 5,
+      "total_columns": 27,
+      "described_columns": 27,
+      "potential_business_term_columns": 19,
+      "described_business_columns": 19,
+      "description_coverage_pct": 100.0,
+      "business_description_coverage_pct": 100.0
+    },
+    "relationships": {
+      "tables_with_constraints_analyzed": 4,
+      "tables_with_pk": 4,
+      "tables_with_fk": 1
+    },
+    "query_library": {
+      "queries_referencing_target_tables": 0,
+      "asset_usage_metrics": {}
+    },
+    "metric_views": {
+      "existing_metric_views": []
+    },
+    "permissions": {
+      "tables_missing_select_count": 0,
+      "tables_not_found_count": 0,
+      "warehouse_can_use": false,
+      "sql_entitled": true,
+      "governance_model_hint": "No SELECT gaps detected for execution principal",
+      "remediation_scripts_generated": []
+    },
+    "warehouse": {
+      "warehouses_found": 0,
+      "any_warehouse": false,
+      "serverless_available": false,
+      "pro_available": false
+    },
+    "ai_features": {
+      "ai_features_enabled": true,
+      "latency_ms": 7477.341413497925
+    },
+    "security_constraints": {
+      "tables_with_rls": [],
+      "columns_with_masking": []
+    },
+    "table_permissions": [
+      {
+        "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+        "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+      },
+      {
+        "table_fqn": "brz_dev.default.dim_date_demo_genie",
+        "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+      },
+      {
+        "table_fqn": "brz_dev.default.mv_sales_demo_genie",
+        "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+      },
+      {
+        "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+        "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+      },
+      {
+        "table_fqn": "brz_dev.default.dim_product_demo_genie",
+        "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+      }
+    ]
+  },
+  "catalogs": [
+    {
+      "catalog_name": "brz_dev",
+      "schemas": [
+        {
+          "schema_name": "default",
+          "tables": [
+            {
+              "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+              "table_catalog": "brz_dev",
+              "table_schema": "default",
+              "table_name": "dim_customer_demo_genie",
+              "table_type": "MANAGED",
+              "data_source_format": "DELTA",
+              "created": "2026-08-14T14:08:21.009000",
+              "last_altered": "2026-08-14T15:58:57.324000",
+              "comment": "Dimensión de clientes. Contiene la información comercial y de identificación de cada cliente.",
+              "objective_table_indicators": {
+                "has_table_comment": true,
+                "is_likely_technical_table_name": false
+              },
+              "column_metrics": {
+                "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_customer_demo_genie",
+                "total_columns": 4,
+                "potential_business_term_columns": 2,
+                "described_business_columns": 2,
+                "described_columns": 4,
+                "description_coverage_pct": 100.0,
+                "has_80pct_column_doc_coverage": true
+              },
+              "relationship_metrics": {
+                "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_customer_demo_genie",
+                "has_pk": true,
+                "fk_count": 0,
+                "fk_targets": [
+                  ""
+                ]
+              },
+              "usage_metrics": {
+                "saved_queries_referencing_table": 0,
+                "execution_frequency": 0,
+                "unique_users": 0
+              },
+              "columns": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_customer_demo_genie",
+                  "column_name": "market_segment",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Segmento de mercado al que pertenece el cliente.",
+                  "ordinal_position": 2,
+                  "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_customer_demo_genie",
+                  "column_name": "customer_id",
+                  "data_type": "LONG",
+                  "is_nullable": "NO",
+                  "comment": "Llave primaria del cliente. Identificador único del cliente.",
+                  "ordinal_position": 0,
+                  "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_customer_demo_genie",
+                  "column_name": "customer_name",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Nombre completo del cliente.",
+                  "ordinal_position": 1,
+                  "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_customer_demo_genie",
+                  "column_name": "nation_id",
+                  "data_type": "LONG",
+                  "is_nullable": "YES",
+                  "comment": "Identificador de la nación del cliente.",
+                  "ordinal_position": 3,
+                  "table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                }
+              ],
+              "columns_truncated": false,
+              "constraints": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_customer_demo_genie",
+                  "constraint_name": "pk_dim_customer_demo_genie",
+                  "constraint_type": "PRIMARY KEY",
+                  "column_name": "customer_id",
+                  "referenced_table_catalog": null,
+                  "referenced_table_schema": null,
+                  "referenced_table": null,
+                  "referenced_column": null,
+                  "referenced_table_fqn": "",
+                  "table_fqn": "brz_dev.default.dim_customer_demo_genie"
+                }
+              ],
+              "query_library": {
+                "queries_referencing_table_count": 0,
+                "queries": [],
+                "queries_truncated": false
+              },
+              "permissions": {
+                "missing_select": false,
+                "not_found": false
+              }
+            },
+            {
+              "table_fqn": "brz_dev.default.dim_date_demo_genie",
+              "table_catalog": "brz_dev",
+              "table_schema": "default",
+              "table_name": "dim_date_demo_genie",
+              "table_type": "MANAGED",
+              "data_source_format": "DELTA",
+              "created": "2026-08-14T14:08:42.238000",
+              "last_altered": "2026-08-14T15:59:01.959000",
+              "comment": "Dimensión calendario utilizada para analizar las ventas por fecha, año y mes.",
+              "objective_table_indicators": {
+                "has_table_comment": true,
+                "is_likely_technical_table_name": false
+              },
+              "column_metrics": {
+                "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_date_demo_genie",
+                "total_columns": 4,
+                "potential_business_term_columns": 3,
+                "described_business_columns": 3,
+                "described_columns": 4,
+                "description_coverage_pct": 100.0,
+                "has_80pct_column_doc_coverage": true
+              },
+              "relationship_metrics": {
+                "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_date_demo_genie",
+                "has_pk": true,
+                "fk_count": 0,
+                "fk_targets": [
+                  ""
+                ]
+              },
+              "usage_metrics": {
+                "saved_queries_referencing_table": 0,
+                "execution_frequency": 0,
+                "unique_users": 0
+              },
+              "columns": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_date_demo_genie",
+                  "column_name": "date_id",
+                  "data_type": "DATE",
+                  "is_nullable": "NO",
+                  "comment": "Llave primaria de la fecha.",
+                  "ordinal_position": 0,
+                  "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_date_demo_genie",
+                  "column_name": "year",
+                  "data_type": "INT",
+                  "is_nullable": "YES",
+                  "comment": "Año calendario.",
+                  "ordinal_position": 1,
+                  "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_date_demo_genie",
+                  "column_name": "month",
+                  "data_type": "INT",
+                  "is_nullable": "YES",
+                  "comment": "Número del mes del año.",
+                  "ordinal_position": 2,
+                  "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_date_demo_genie",
+                  "column_name": "month_name",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Nombre del mes.",
+                  "ordinal_position": 3,
+                  "table_fqn": "brz_dev.default.dim_date_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                }
+              ],
+              "columns_truncated": false,
+              "constraints": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_date_demo_genie",
+                  "constraint_name": "pk_dim_date_demo_genie",
+                  "constraint_type": "PRIMARY KEY",
+                  "column_name": "date_id",
+                  "referenced_table_catalog": null,
+                  "referenced_table_schema": null,
+                  "referenced_table": null,
+                  "referenced_column": null,
+                  "referenced_table_fqn": "",
+                  "table_fqn": "brz_dev.default.dim_date_demo_genie"
+                }
+              ],
+              "query_library": {
+                "queries_referencing_table_count": 0,
+                "queries": [],
+                "queries_truncated": false
+              },
+              "permissions": {
+                "missing_select": false,
+                "not_found": false
+              }
+            },
+            {
+              "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+              "table_catalog": "brz_dev",
+              "table_schema": "default",
+              "table_name": "fact_sales_demo_genie",
+              "table_type": "MANAGED",
+              "data_source_format": "DELTA",
+              "created": "2026-08-14T14:09:15.858000",
+              "last_altered": "2026-08-14T15:59:05.914000",
+              "comment": "Tabla de hechos de ventas. Cada fila representa una línea de producto perteneciente a una orden.",
+              "objective_table_indicators": {
+                "has_table_comment": true,
+                "is_likely_technical_table_name": false
+              },
+              "column_metrics": {
+                "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "fact_sales_demo_genie",
+                "total_columns": 9,
+                "potential_business_term_columns": 5,
+                "described_business_columns": 5,
+                "described_columns": 9,
+                "description_coverage_pct": 100.0,
+                "has_80pct_column_doc_coverage": true
+              },
+              "relationship_metrics": {
+                "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "fact_sales_demo_genie",
+                "has_pk": true,
+                "fk_count": 3,
+                "fk_targets": [
+                  "brz_dev.default.dim_date_demo_genie",
+                  "brz_dev.default.dim_customer_demo_genie",
+                  "brz_dev.default.dim_product_demo_genie",
+                  ""
+                ]
+              },
+              "usage_metrics": {
+                "saved_queries_referencing_table": 0,
+                "execution_frequency": 0,
+                "unique_users": 0
+              },
+              "columns": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "line_number",
+                  "data_type": "INT",
+                  "is_nullable": "NO",
+                  "comment": "Número de línea dentro de la orden. Junto con order_id identifica de forma única la línea.",
+                  "ordinal_position": 1,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "product_id",
+                  "data_type": "LONG",
+                  "is_nullable": "YES",
+                  "comment": "Llave foránea hacia dim_product. Identifica el producto vendido.",
+                  "ordinal_position": 3,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "quantity",
+                  "data_type": "DECIMAL",
+                  "is_nullable": "YES",
+                  "comment": "Cantidad de unidades vendidas.",
+                  "ordinal_position": 5,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "order_id",
+                  "data_type": "LONG",
+                  "is_nullable": "NO",
+                  "comment": "Identificador de la orden. Puede repetirse porque una orden puede contener varios productos.",
+                  "ordinal_position": 0,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "customer_id",
+                  "data_type": "LONG",
+                  "is_nullable": "YES",
+                  "comment": "Llave foránea hacia dim_customer. Identifica el cliente que realizó la orden.",
+                  "ordinal_position": 2,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "date_id",
+                  "data_type": "DATE",
+                  "is_nullable": "YES",
+                  "comment": "Llave foránea hacia dim_date. Fecha en la que se realizó la orden.",
+                  "ordinal_position": 4,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "gross_sales",
+                  "data_type": "DECIMAL",
+                  "is_nullable": "YES",
+                  "comment": "Valor bruto de la línea de venta antes del descuento.",
+                  "ordinal_position": 6,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "net_sales",
+                  "data_type": "DECIMAL",
+                  "is_nullable": "YES",
+                  "comment": "Valor neto de la venta después de aplicar el descuento.",
+                  "ordinal_position": 8,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "column_name": "discount",
+                  "data_type": "DECIMAL",
+                  "is_nullable": "YES",
+                  "comment": "Descuento aplicado a la línea de venta.",
+                  "ordinal_position": 7,
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                }
+              ],
+              "columns_truncated": false,
+              "constraints": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "constraint_name": "fk_fact_sales_date_demo_genie",
+                  "constraint_type": "FOREIGN KEY",
+                  "column_name": "date_id",
+                  "referenced_table_catalog": "brz_dev",
+                  "referenced_table_schema": "default",
+                  "referenced_table": "dim_date_demo_genie",
+                  "referenced_column": "date_id",
+                  "referenced_table_fqn": "brz_dev.default.dim_date_demo_genie",
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "constraint_name": "fk_fact_sales_customer_demo_genie",
+                  "constraint_type": "FOREIGN KEY",
+                  "column_name": "customer_id",
+                  "referenced_table_catalog": "brz_dev",
+                  "referenced_table_schema": "default",
+                  "referenced_table": "dim_customer_demo_genie",
+                  "referenced_column": "customer_id",
+                  "referenced_table_fqn": "brz_dev.default.dim_customer_demo_genie",
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "constraint_name": "fk_fact_sales_product_demo_genie",
+                  "constraint_type": "FOREIGN KEY",
+                  "column_name": "product_id",
+                  "referenced_table_catalog": "brz_dev",
+                  "referenced_table_schema": "default",
+                  "referenced_table": "dim_product_demo_genie",
+                  "referenced_column": "product_id",
+                  "referenced_table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "constraint_name": "pk_fact_sales_demo_genie",
+                  "constraint_type": "PRIMARY KEY",
+                  "column_name": "order_id",
+                  "referenced_table_catalog": null,
+                  "referenced_table_schema": null,
+                  "referenced_table": null,
+                  "referenced_column": null,
+                  "referenced_table_fqn": "",
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "fact_sales_demo_genie",
+                  "constraint_name": "pk_fact_sales_demo_genie",
+                  "constraint_type": "PRIMARY KEY",
+                  "column_name": "line_number",
+                  "referenced_table_catalog": null,
+                  "referenced_table_schema": null,
+                  "referenced_table": null,
+                  "referenced_column": null,
+                  "referenced_table_fqn": "",
+                  "table_fqn": "brz_dev.default.fact_sales_demo_genie"
+                }
+              ],
+              "query_library": {
+                "queries_referencing_table_count": 0,
+                "queries": [],
+                "queries_truncated": false
+              },
+              "permissions": {
+                "missing_select": false,
+                "not_found": false
+              }
+            },
+            {
+              "table_fqn": "brz_dev.default.dim_product_demo_genie",
+              "table_catalog": "brz_dev",
+              "table_schema": "default",
+              "table_name": "dim_product_demo_genie",
+              "table_type": "MANAGED",
+              "data_source_format": "DELTA",
+              "created": "2026-08-14T14:08:30.061000",
+              "last_altered": "2026-08-14T15:59:08.635000",
+              "comment": "Dimensión de productos. Contiene las características y clasificación de cada producto.",
+              "objective_table_indicators": {
+                "has_table_comment": true,
+                "is_likely_technical_table_name": false
+              },
+              "column_metrics": {
+                "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_product_demo_genie",
+                "total_columns": 6,
+                "potential_business_term_columns": 5,
+                "described_business_columns": 5,
+                "described_columns": 6,
+                "description_coverage_pct": 100.0,
+                "has_80pct_column_doc_coverage": true
+              },
+              "relationship_metrics": {
+                "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                "table_catalog": "brz_dev",
+                "table_schema": "default",
+                "table_name": "dim_product_demo_genie",
+                "has_pk": true,
+                "fk_count": 0,
+                "fk_targets": [
+                  ""
+                ]
+              },
+              "usage_metrics": {
+                "saved_queries_referencing_table": 0,
+                "execution_frequency": 0,
+                "unique_users": 0
+              },
+              "columns": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_id",
+                  "data_type": "LONG",
+                  "is_nullable": "NO",
+                  "comment": "Llave primaria del producto. Identificador único del producto.",
+                  "ordinal_position": 0,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": true,
+                  "is_potential_business_term": false,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_type",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Tipo o categoría del producto.",
+                  "ordinal_position": 4,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "manufacturer",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Fabricante del producto.",
+                  "ordinal_position": 2,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_size",
+                  "data_type": "LONG",
+                  "is_nullable": "YES",
+                  "comment": "Tamaño del producto.",
+                  "ordinal_position": 5,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_name",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Nombre descriptivo del producto.",
+                  "ordinal_position": 1,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "brand",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Marca comercial del producto.",
+                  "ordinal_position": 3,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                }
+              ],
+              "columns_truncated": false,
+              "constraints": [
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "constraint_name": "pk_dim_product_demo_genie",
+                  "constraint_type": "PRIMARY KEY",
+                  "column_name": "product_id",
+                  "referenced_table_catalog": null,
+                  "referenced_table_schema": null,
+                  "referenced_table": null,
+                  "referenced_column": null,
+                  "referenced_table_fqn": "",
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie"
+                }
+              ],
+              "query_library": {
+                "queries_referencing_table_count": 0,
+                "queries": [],
+                "queries_truncated": false
+              },
+              "permissions": {
+                "missing_select": false,
+                "not_found": false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permission_evidence": {
+    "tables_missing_select": [],
+    "tables_not_found": [],
+    "remediation_scripts_generated_by_checker": []
+  },
+  "collector_warnings": [
+    "Target warehouse '${var.genie_space_demo_genie_warehouse_id}' was not found or is not visible.",
+    "Workspace or warehouse validation failed: ${var.genie_space_demo_genie_warehouse_id} is not a valid endpoint id.",
+    "Could not extract lineage from 'system.access.table_lineage'.",
+    "Could not extract usage metrics from 'system.query.history'."
+  ],
+  "collector_errors": [],
+  "initial_config": {
+    "catalogs": [
+      "brz_dev"
+    ],
+    "schemas": [
+      "default"
+    ],
+    "tables": [
+      "brz_dev.default.dim_customer_demo_genie",
+      "brz_dev.default.dim_date_demo_genie",
+      "brz_dev.default.dim_product_demo_genie",
+      "brz_dev.default.fact_sales_demo_genie",
+      "brz_dev.default.mv_sales_demo_genie"
+    ]
+  }
+}

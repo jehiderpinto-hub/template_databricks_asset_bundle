@@ -1,7 +1,0 @@
-resources:
-  genie_spaces:
-    poc_calcualdora_precios_agentica:
-      title: "POC Calcualdora Precios Agentica"
-      warehouse_id: ${var.genie_space_warehouse_id}
-      file_path: ../../src/genie_spaces/poc_calcualdora_precios_agentica.geniespace.json
-      parent_path: ${var.genie_space_parent_path}

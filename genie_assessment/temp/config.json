@@ -1,0 +1,21 @@
+{
+  "catalogs": [
+    "brz_dev"
+  ],
+  "schemas": [
+    "default"
+  ],
+  "tables": [
+    "brz_dev.default.dim_customer_demo_genie",
+    "brz_dev.default.dim_date_demo_genie",
+    "brz_dev.default.dim_product_demo_genie",
+    "brz_dev.default.fact_sales_demo_genie",
+    "brz_dev.default.mv_sales_demo_genie"
+  ],
+  "business_questions": [
+    "¿Cuáles son las ventas por producto?"
+  ],
+  "warehouse_id": "6fadc34945c1c177",
+  "llm_endpoint": "databricks-claude-sonnet-4-6",
+  "governance_transcript_path": null
+}

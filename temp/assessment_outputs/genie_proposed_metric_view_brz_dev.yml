@@ -1,0 +1,127 @@
+version: 1.1
+
+source: brz_dev.default.fact_sales_demo_genie
+
+joins:
+  - name: dim_customer
+    source: brz_dev.default.dim_customer_demo_genie
+    "on": source.customer_id = dim_customer.customer_id
+  - name: dim_product
+    source: brz_dev.default.dim_product_demo_genie
+    "on": source.product_id = dim_product.product_id
+  - name: dim_date
+    source: brz_dev.default.dim_date_demo_genie
+    "on": source.date_id = dim_date.date_id
+
+comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para responder preguntas de negocio sobre órdenes, ingresos, descuentos y comportamiento por segmento, producto y período de tiempo."
+
+dimensions:
+  - name: Segmento de Mercado
+    expr: dim_customer.market_segment
+    comment: "Segmento de mercado al que pertenece el cliente que realizó la orden."
+    synonyms:
+      - segmento
+      - market segment
+  - name: Nombre del Cliente
+    expr: dim_customer.customer_name
+    comment: "Nombre completo del cliente."
+    synonyms:
+      - cliente
+      - customer
+  - name: Nombre del Producto
+    expr: dim_product.product_name
+    comment: "Nombre descriptivo del producto vendido."
+    synonyms:
+      - producto
+      - product
+  - name: Tipo de Producto
+    expr: dim_product.product_type
+    comment: "Categoría o tipo del producto."
+    synonyms:
+      - categoría
+      - product type
+  - name: Marca
+    expr: dim_product.brand
+    comment: "Marca comercial del producto."
+    synonyms:
+      - brand
+      - marca comercial
+  - name: Año
+    expr: dim_date.year
+    comment: "Año calendario en que se realizó la venta."
+    synonyms:
+      - year
+      - anio
+  - name: Mes
+    expr: dim_date.month
+    comment: "Número del mes en que se realizó la venta."
+    synonyms:
+      - month
+      - número de mes
+  - name: Nombre del Mes
+    expr: dim_date.month_name
+    comment: "Nombre del mes en que se realizó la venta."
+    synonyms:
+      - month name
+      - mes
+
+measures:
+  - name: Número de Órdenes
+    expr: COUNT(DISTINCT order_id)
+    comment: "Cantidad de órdenes únicas. Una orden puede contener múltiples líneas de producto."
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - órdenes
+      - orders
+      - pedidos
+  - name: Ventas Brutas
+    expr: SUM(gross_sales)
+    comment: "Suma del valor bruto de ventas antes de aplicar descuentos."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - gross sales
+      - ingresos brutos
+  - name: Ventas Netas
+    expr: SUM(net_sales)
+    comment: "Suma del valor neto de ventas después de aplicar descuentos."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - net sales
+      - ingresos netos
+  - name: Descuento Total
+    expr: SUM(discount)
+    comment: "Suma total de descuentos aplicados a las líneas de venta."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - descuentos
+      - total discount
+  - name: Unidades Vendidas
+    expr: SUM(quantity)
+    comment: "Total de unidades vendidas."
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - cantidad
+      - quantity
