@@ -9,15 +9,13 @@
     "brz_dev.default.dim_customer_demo_genie",
     "brz_dev.default.dim_date_demo_genie",
     "brz_dev.default.dim_product_demo_genie",
-    "brz_dev.default.fact_sales_demo_genie"
+    "brz_dev.default.fact_sales_demo_genie",
+    "brz_dev.default.mv_sales_demo_genie"
   ],
   "business_questions": [
     "¿Cuáles fueron las ventas netas por año?",
     "¿Cuál es el top 5 de productos con mayores ventas?",
-    "¿Cuántas unidades se vendieron por producto?",
-    "¿Cuál es el descuento promedio por cliente?",
-    "¿Cuántas órdenes se realizaron en total?",
-    "¿Cuáles son los 10 clientes con mayores ventas brutas?"
+    "¿Cuántas unidades se vendieron por producto?"
   ],
   "warehouse_id": "6fadc34945c1c177",
   "llm_endpoint": "databricks-claude-sonnet-4-6",

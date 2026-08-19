@@ -80,7 +80,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("temp") / "assessment_outputs",
+        default=Path("genie_assessment") / "temp" / "assessment_outputs",
         help="Carpeta local del bundle donde se guardarán las salidas.",
     )
     parser.add_argument(

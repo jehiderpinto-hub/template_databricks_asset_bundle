@@ -14,17 +14,15 @@ MANAGED_DIRECTORIES = [
     RESOURCES_DIRECTORY,
     SOURCE_DIRECTORY,
     PROJECT_ROOT / "genie_assessment" / "temp",
-    PROJECT_ROOT / "temp" / "assessment_outputs",
 ]
 
 
 def run_command(command: list[str], description: str) -> None:
     """Ejecuta un comando desde la raíz del proyecto y falla si no termina bien."""
     print(f"\n[{description}] {' '.join(command)}")
-    result = run_subprocess(command, PROJECT_ROOT, capture_output=True)
+    result = run_subprocess(command, PROJECT_ROOT)
     if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(message or f"El comando terminó con código {result.returncode}")
+        raise RuntimeError(f"El comando terminó con código {result.returncode}")
 
 
 def get_files(directory: Path, pattern: str) -> set[Path]:
@@ -185,7 +183,9 @@ def validate_and_run_job(target: str, profile: str) -> None:
 def refactor_genie(json_file: Path, profile: str) -> None:
     """Crea la Metric View recuperada y actualiza el JSON del Genie."""
     config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
-    output_directory = PROJECT_ROOT / "temp" / "assessment_outputs"
+    output_directory = (
+        PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
+    )
     with config_file.open(encoding="utf-8") as file:
         config = json.load(file)
     run_command(
@@ -208,7 +208,7 @@ def refactor_genie(json_file: Path, profile: str) -> None:
 
 
 def retrieve_assessment_outputs(profile: str) -> None:
-    """Descarga las salidas del Job a ``temp/assessment_outputs``."""
+    """Descarga las salidas del Job a ``genie_assessment/temp/assessment_outputs``."""
     run_command(
         [
             sys.executable,

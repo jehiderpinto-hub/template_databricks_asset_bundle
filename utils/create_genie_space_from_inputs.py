@@ -1,5 +1,6 @@
 import argparse
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,12 @@ def build_genie_json(sources: list[str], questions: list[str]) -> dict[str, Any]
     """Construye un Genie Space base con fuentes y preguntas de negocio."""
     return {
         "version": 2,
-        "benchmarks": {"questions": [{"question": [question]} for question in questions]},
+        "benchmarks": {
+            "questions": [
+                {"id": uuid.uuid4().hex, "question": [question]}
+                for question in questions
+            ]
+        },
         "data_sources": {
             "tables": [
                 {"identifier": source, "column_configs": []} for source in sources

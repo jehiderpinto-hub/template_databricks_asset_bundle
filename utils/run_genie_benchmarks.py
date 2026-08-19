@@ -112,7 +112,12 @@ def main() -> None:
     parser.add_argument(
         "--report",
         type=Path,
-        default=Path("temp") / "assessment_outputs" / "genie_benchmark_results.json",
+        default=(
+            Path("genie_assessment")
+            / "temp"
+            / "assessment_outputs"
+            / "genie_benchmark_results.json"
+        ),
     )
     args = parser.parse_args()
 
