@@ -3,7 +3,7 @@
   "payload_type": "metadata_quality_evidence_input",
   "assessment_type": "Databricks Genie Technical Readiness Assessment",
   "assessment_phase": "metadata_quality_mvp",
-  "generated_at": "2026-08-19T20:48:54.234645+00:00",
+  "generated_at": "2026-08-19T21:38:31.902688+00:00",
   "scope": {
     "catalogs": [
       "brz_dev"
@@ -76,7 +76,7 @@
     },
     "ai_features": {
       "ai_features_enabled": true,
-      "latency_ms": 7477.341413497925
+      "latency_ms": 7557.43670463562
     },
     "security_constraints": {
       "tables_with_rls": [],
@@ -168,7 +168,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -183,7 +183,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -198,7 +198,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -213,7 +213,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 }
               ],
               "columns_truncated": false,
@@ -299,7 +299,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -314,7 +314,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -329,7 +329,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -344,7 +344,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 }
               ],
               "columns_truncated": false,
@@ -433,7 +433,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -448,7 +448,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -463,7 +463,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -478,7 +478,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -493,7 +493,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -508,7 +508,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -523,7 +523,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -538,7 +538,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -553,7 +553,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 }
               ],
               "columns_truncated": false,
@@ -695,7 +695,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -710,7 +710,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -725,7 +725,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -740,7 +740,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -755,7 +755,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -770,7 +770,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-19T20:48:49.322387"
+                  "collection_timestamp": "2026-08-19T21:38:26.688331"
                 }
               ],
               "columns_truncated": false,

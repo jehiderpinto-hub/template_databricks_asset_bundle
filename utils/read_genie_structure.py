@@ -4,28 +4,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
-
-def read_yaml_file(file_path: Path) -> Any:
-    with file_path.open(encoding="utf-8") as file:
-        return yaml.safe_load(file)
-
-
-def read_json_file(file_path: Path) -> Any:
-    with file_path.open(encoding="utf-8") as file:
-        return json.load(file)
-
-
-def validate_file(file_path: Path, expected_suffix: str) -> None:
-    if not file_path.is_file():
-        raise FileNotFoundError(f"No existe el archivo: {file_path}")
-    if file_path.suffix.lower() != expected_suffix:
-        raise ValueError(
-            f"El archivo {file_path} debe tener extensión {expected_suffix}"
-        )
+from common import read_json_file, read_yaml_file, validate_file
 
 
 def get_genie_resource(yaml_structure: dict[str, Any]) -> dict[str, Any]:
+    """Obtiene la primera definición de Genie Space del YAML del bundle."""
     resources = yaml_structure.get("resources", {})
     genie_spaces = resources.get("genie_spaces", {})
 
@@ -36,6 +19,7 @@ def get_genie_resource(yaml_structure: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_source_identifiers(json_structure: dict[str, Any]) -> list[str]:
+    """Extrae los identificadores de tablas declarados en el JSON del Genie."""
     tables = json_structure.get("data_sources", {}).get("tables", [])
     identifiers = [table.get("identifier") for table in tables]
     return [identifier for identifier in identifiers if identifier]
@@ -46,6 +30,7 @@ def build_config(
     json_structure: dict[str, Any],
     business_questions: list[str],
 ) -> dict[str, Any]:
+    """Construye el config de assessment a partir del YAML, JSON y preguntas."""
     resource = get_genie_resource(yaml_structure)
     table_identifiers = get_source_identifiers(json_structure)
 
@@ -76,6 +61,7 @@ def build_config(
 
 
 def ask_business_questions() -> list[str]:
+    """Solicita preguntas de negocio hasta recibir una línea vacía."""
     print("Escribe las preguntas de negocio. Deja una línea vacía para terminar.")
     questions: list[str] = []
 
@@ -87,6 +73,7 @@ def ask_business_questions() -> list[str]:
 
 
 def write_config(config: dict[str, Any]) -> Path:
+    """Guarda el config en ``genie_assessment/temp/config.json``."""
     output_directory = Path("genie_assessment") / "temp"
     output_directory.mkdir(parents=True, exist_ok=True)
     output_file = output_directory / "config.json"
@@ -99,6 +86,7 @@ def write_config(config: dict[str, Any]) -> Path:
 
 
 def main() -> None:
+    """Parsea argumentos, construye el config y lo guarda en disco."""
     parser = argparse.ArgumentParser(
         description="Lee y muestra la estructura de un YAML y un JSON de Genie Space."
     )

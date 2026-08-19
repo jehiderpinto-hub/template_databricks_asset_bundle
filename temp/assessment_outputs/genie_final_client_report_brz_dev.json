@@ -1,5 +1,5 @@
 {
-  "report_generated_at": "2026-08-19T20:49:29.124026+00:00",
+  "report_generated_at": "2026-08-19T21:39:08.309761+00:00",
   "metadata_quality": {
     "table_descriptions": {
       "coverage_pct": 100.0,
@@ -26,13 +26,13 @@
     }
   },
   "llm_expert_review": {
-    "summary": "The Unity Catalog metadata is in strong foundational health, with 100% coverage on both table and column descriptions and all 4 analyzed tables having primary keys defined. The one critical gap is the complete absence of existing SQL queries (0 relevant queries), which represents a significant risk for Genie's ability to generate accurate, context-aware SQL out of the box.",
-    "genie_impact_analysis": "With zero existing SQL queries registered in the catalog, Genie has no historical query patterns, business logic examples, or domain-specific SQL idioms to learn from. This means Genie will rely entirely on table/column descriptions and schema inference when generating SQL, increasing the likelihood of syntactically valid but semantically incorrect queries — particularly for complex joins, business-specific aggregations, or non-obvious filtering logic. Additionally, only 1 of 4 tables has foreign key relationships defined, which limits Genie's ability to automatically infer correct multi-table join paths, potentially leading to missing or incorrect JOIN conditions in generated queries.",
+    "summary": "The Unity Catalog metadata is in strong foundational health, with 100% coverage on both table and column descriptions and all four analyzed tables having primary keys defined. However, a critical gap exists: there are zero existing SQL queries registered, which is a significant readiness concern for Databricks Genie's ability to generate accurate and contextually relevant SQL out of the box.",
+    "genie_impact_analysis": "The absence of any existing SQL queries (RED status) is the most impactful gap for Genie readiness. Genie relies heavily on curated example queries — often called 'Genie-approved' or trusted SQL samples — to learn domain-specific patterns, business logic, metric definitions, and preferred join paths. Without these, Genie must infer intent purely from descriptions and schema structure, which increases the risk of generating syntactically valid but semantically incorrect SQL (e.g., wrong aggregation logic, incorrect filter conditions, or suboptimal join strategies). Additionally, only 1 of 4 tables has foreign key relationships defined, meaning Genie has limited explicit relationship context to guide multi-table joins, further compounding the query generation risk in the absence of example SQL to compensate.",
     "recommended_next_steps": [
-      "Immediately populate the Genie Space with a library of at least 10–20 curated, representative SQL queries covering the most common business questions, key joins across all 4 tables, and domain-specific aggregations — this is the single highest-impact action to improve Genie accuracy.",
-      "Define foreign key relationships for the remaining 3 tables that currently lack FK constraints, ensuring Genie can reliably infer correct JOIN paths between all related tables without ambiguity.",
-      "Add natural-language 'Genie Instructions' (trusted assets / instructions in the Genie Space settings) that describe business rules, preferred aggregation methods, and any non-obvious column semantics that cannot be captured in standard column descriptions alone.",
-      "After deploying Genie, establish a feedback loop where end-users flag incorrect SQL responses, and use those cases to add corrective example queries to the catalog, continuously improving Genie's contextual accuracy over time."
+      "Immediately curate and register a library of at least 10–20 validated, business-representative SQL queries as Genie trusted assets — prioritizing queries that cover common KPIs, frequent join patterns across all 4 tables, and key filtering/aggregation logic used by business stakeholders.",
+      "Define foreign key relationships for the remaining 3 tables that currently lack FK constraints, so Genie has explicit, machine-readable join path guidance to supplement the missing example queries and reduce multi-table join errors.",
+      "Engage business analysts and data consumers to document the top 5–10 most frequently asked business questions, then translate each into a validated SQL query and register it within the Genie Space as an approved example to accelerate contextual learning.",
+      "After adding example queries and FK relationships, re-run the metadata quality pre-analysis to confirm all dimensions reach GREEN status before promoting the Genie Space to production business users."
     ]
   },
   "semantic_validation": [
@@ -47,22 +47,22 @@
       ],
       "missing_elements": [],
       "confidence": 9,
-      "actual_answer": "El número de órdenes por segmento de mercado varía según los datos. Por ejemplo, el segmento 'AUTOMOBILE' podría tener 29,000 órdenes, 'BUILDING' 27,500, 'FURNITURE' 28,000, 'HOUSEHOLD' 28,500 y 'MACHINERY' 27,000 (valores hipotéticos ilustrativos). La consulta SQL proporcionada calculará los valores reales.",
+      "actual_answer": "El número de órdenes por segmento de mercado varía según los datos. Por ejemplo, el segmento 'AUTOMOBILE' podría tener 29,752 órdenes, 'BUILDING' 27,631, 'FURNITURE' 28,144, 'HOUSEHOLD' 28,823 y 'MACHINERY' 27,650 (valores hipotéticos ilustrativos). La consulta SQL proporcionada calculará los valores reales.",
       "generated_sql": "SELECT\n    c.market_segment,\n    COUNT(DISTINCT f.order_id) AS total_orders\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_customer_demo_genie c\n        ON f.customer_id = c.customer_id\nGROUP BY\n    c.market_segment\nORDER BY\n    total_orders DESC;",
-      "reasoning": "La pregunta solicita el conteo de órdenes agrupadas por segmento de mercado. La tabla fact_sales_demo_genie contiene el campo order_id (que puede repetirse por línea de producto) y customer_id. La tabla dim_customer_demo_genie contiene el campo market_segment y customer_id como llave primaria. Uniendo ambas tablas por customer_id y usando COUNT(DISTINCT order_id) se obtiene el número único de órdenes por segmento. No hay ambigüedad en la pregunta ni datos faltantes.",
+      "reasoning": "La pregunta solicita el conteo de órdenes agrupadas por segmento de mercado. La tabla de hechos 'fact_sales_demo_genie' contiene el campo 'order_id' (identificador de orden) y 'customer_id' (para enlazar con el cliente). La dimensión 'dim_customer_demo_genie' contiene el campo 'market_segment'. Mediante un JOIN entre ambas tablas por 'customer_id' y usando COUNT(DISTINCT order_id) agrupado por 'market_segment', se puede responder la pregunta de forma completa y precisa. No hay ambigüedad ni datos faltantes.",
       "business_question": "¿Cuántas órdenes existen por segmento?"
     }
   ],
   "query_classification": [],
   "consolidated_mv_design": {
-    "consolidation_reasoning": "A single central view built on the sales fact table, joined to customer, product, and date dimensions, provides all the necessary context to answer sales-related business questions. The question about orders by segment requires joining fact_sales to dim_customer to get market_segment, then counting distinct order_ids. By including all four tables in one view, this design is extensible for future questions about products, dates, and customers without restructuring.",
+    "consolidation_reasoning": "A single central view built on the sales fact table, joined to customer, product, and date dimensions, provides all the necessary context to answer the business question about order counts by market segment. The view exposes the market_segment dimension from dim_customer and a distinct order count measure from the fact table, enabling direct aggregation by segment.",
     "covered_questions": [
       "¿Cuántas órdenes existen por segmento?"
     ],
     "proposed_yaml_config": {
       "version": "1.1",
       "source": "brz_dev.default.fact_sales_demo_genie",
-      "comment": "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para responder preguntas de negocio sobre órdenes, ingresos, descuentos y comportamiento por segmento, producto y período de tiempo.",
+      "comment": "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para permitir análisis de órdenes, ingresos y descuentos por segmento de mercado, producto, marca, fabricante y período de tiempo.",
       "joins": [
         {
           "name": "dim_customer",
@@ -100,18 +100,9 @@
           ]
         },
         {
-          "name": "Nombre del Producto",
-          "expr": "dim_product.product_name",
-          "comment": "Nombre descriptivo del producto vendido.",
-          "synonyms": [
-            "producto",
-            "product"
-          ]
-        },
-        {
           "name": "Tipo de Producto",
           "expr": "dim_product.product_type",
-          "comment": "Categoría o tipo del producto.",
+          "comment": "Tipo o categoría del producto vendido.",
           "synonyms": [
             "categoría",
             "product type"
@@ -127,6 +118,15 @@
           ]
         },
         {
+          "name": "Fabricante",
+          "expr": "dim_product.manufacturer",
+          "comment": "Fabricante del producto.",
+          "synonyms": [
+            "manufacturer",
+            "proveedor"
+          ]
+        },
+        {
           "name": "Año",
           "expr": "dim_date.year",
           "comment": "Año calendario en que se realizó la venta.",
@@ -137,20 +137,11 @@
         },
         {
           "name": "Mes",
-          "expr": "dim_date.month",
-          "comment": "Número del mes en que se realizó la venta.",
-          "synonyms": [
-            "month",
-            "número de mes"
-          ]
-        },
-        {
-          "name": "Nombre del Mes",
           "expr": "dim_date.month_name",
           "comment": "Nombre del mes en que se realizó la venta.",
           "synonyms": [
-            "month name",
-            "mes"
+            "month",
+            "nombre del mes"
           ]
         }
       ],
@@ -161,9 +152,9 @@
           "comment": "Cantidad de órdenes únicas. Una orden puede contener múltiples líneas de producto.",
           "format_type": "number",
           "synonyms": [
-            "órdenes",
+            "ordenes",
             "orders",
-            "pedidos"
+            "cantidad de órdenes"
           ]
         },
         {
@@ -202,8 +193,8 @@
           "comment": "Total de unidades vendidas.",
           "format_type": "number",
           "synonyms": [
-            "cantidad",
-            "quantity"
+            "cantidad vendida",
+            "quantity sold"
           ]
         }
       ]

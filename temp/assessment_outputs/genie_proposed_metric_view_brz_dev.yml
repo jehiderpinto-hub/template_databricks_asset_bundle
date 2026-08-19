@@ -13,7 +13,7 @@ joins:
     source: brz_dev.default.dim_date_demo_genie
     "on": source.date_id = dim_date.date_id
 
-comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para responder preguntas de negocio sobre órdenes, ingresos, descuentos y comportamiento por segmento, producto y período de tiempo."
+comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de cliente, producto y fecha para permitir análisis de órdenes, ingresos y descuentos por segmento de mercado, producto, marca, fabricante y período de tiempo."
 
 dimensions:
   - name: Segmento de Mercado
@@ -28,15 +28,9 @@ dimensions:
     synonyms:
       - cliente
       - customer
-  - name: Nombre del Producto
-    expr: dim_product.product_name
-    comment: "Nombre descriptivo del producto vendido."
-    synonyms:
-      - producto
-      - product
   - name: Tipo de Producto
     expr: dim_product.product_type
-    comment: "Categoría o tipo del producto."
+    comment: "Tipo o categoría del producto vendido."
     synonyms:
       - categoría
       - product type
@@ -46,6 +40,12 @@ dimensions:
     synonyms:
       - brand
       - marca comercial
+  - name: Fabricante
+    expr: dim_product.manufacturer
+    comment: "Fabricante del producto."
+    synonyms:
+      - manufacturer
+      - proveedor
   - name: Año
     expr: dim_date.year
     comment: "Año calendario en que se realizó la venta."
@@ -53,17 +53,11 @@ dimensions:
       - year
       - anio
   - name: Mes
-    expr: dim_date.month
-    comment: "Número del mes en que se realizó la venta."
-    synonyms:
-      - month
-      - número de mes
-  - name: Nombre del Mes
     expr: dim_date.month_name
     comment: "Nombre del mes en que se realizó la venta."
     synonyms:
-      - month name
-      - mes
+      - month
+      - nombre del mes
 
 measures:
   - name: Número de Órdenes
@@ -75,9 +69,9 @@ measures:
         type: exact
         places: 2
     synonyms:
-      - órdenes
+      - ordenes
       - orders
-      - pedidos
+      - cantidad de órdenes
   - name: Ventas Brutas
     expr: SUM(gross_sales)
     comment: "Suma del valor bruto de ventas antes de aplicar descuentos."
@@ -123,5 +117,5 @@ measures:
         type: exact
         places: 2
     synonyms:
-      - cantidad
-      - quantity
+      - cantidad vendida
+      - quantity sold

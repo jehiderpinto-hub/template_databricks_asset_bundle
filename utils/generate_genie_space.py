@@ -2,13 +2,15 @@ import argparse
 import glob
 import os
 import shutil
-import subprocess
 import sys
+from pathlib import Path
 
 import yaml
+from common import run_subprocess
 
 
 def normalize_genie_resource_file_path(resource_file: str) -> None:
+    """Normaliza el ``file_path`` del YAML al layout del bundle."""
     with open(resource_file, encoding="utf-8") as file:
         resource = yaml.safe_load(file)
 
@@ -24,7 +26,46 @@ def normalize_genie_resource_file_path(resource_file: str) -> None:
         yaml.safe_dump(resource, file, allow_unicode=True, sort_keys=False)
 
 
-def generate_and_organize_genie_space(genie_space_id: str, profile: str = None):
+def build_generation_command(genie_space_id: str, profile: str | None) -> list[str]:
+    """Construye el comando de Databricks para generar un Genie Space."""
+    command = [
+        "databricks",
+        "bundle",
+        "generate",
+        "genie-space",
+        "--existing-id",
+        genie_space_id,
+    ]
+    if profile:
+        command.extend(["--profile", profile])
+    return command
+
+
+def move_generated_files(
+    source_directory: str,
+    target_directory: str,
+    patterns: list[str],
+    normalize_yaml: bool = False,
+) -> list[str]:
+    """Mueve archivos generados a una carpeta del bundle y devuelve sus nombres."""
+    imported_files: list[str] = []
+    for pattern in patterns:
+        for filepath in glob.glob(os.path.join(source_directory, pattern)):
+            if not os.path.isfile(filepath):
+                continue
+            filename = os.path.basename(filepath)
+            destination = os.path.join(target_directory, filename)
+            shutil.move(filepath, destination)
+            if normalize_yaml:
+                normalize_genie_resource_file_path(destination)
+            imported_files.append(filename)
+    return imported_files
+
+
+def generate_and_organize_genie_space(
+    genie_space_id: str, profile: str | None = None
+) -> None:
+    """Genera un Genie Space y organiza sus archivos en ``resources`` y ``src``."""
     root_dir = os.getcwd()
     resources_dir = os.path.join(root_dir, "resources")
     src_dir = os.path.join(root_dir, "src")
@@ -36,23 +77,11 @@ def generate_and_organize_genie_space(genie_space_id: str, profile: str = None):
     os.makedirs(target_resources_dir, exist_ok=True)
     os.makedirs(target_src_dir, exist_ok=True)
 
-    # Construir el comando de la CLI
-    cmd = [
-        "databricks",
-        "bundle",
-        "generate",
-        "genie-space",
-        "--existing-id",
-        genie_space_id,
-    ]
-
-    # Si se pasa un perfil, agregarlo como flag al comando
-    if profile:
-        cmd.extend(["--profile", profile])
+    cmd = build_generation_command(genie_space_id, profile)
 
     print(f"Ejecutando: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_subprocess(cmd, Path.cwd(), capture_output=True)
 
     if result.returncode != 0:
         print("Error al generar el Genie Space:", file=sys.stderr)
@@ -61,24 +90,17 @@ def generate_and_organize_genie_space(genie_space_id: str, profile: str = None):
 
     print(result.stdout)
 
-    # Mover archivos creados en 'resources/' a 'resources/genie_spaces/'
-    for filepath in glob.glob(os.path.join(resources_dir, "*.yml")):
-        if os.path.isfile(filepath):
-            filename = os.path.basename(filepath)
-            dest = os.path.join(target_resources_dir, filename)
-            shutil.move(filepath, dest)
-            normalize_genie_resource_file_path(dest)
-            print(f"Importado: {filename} -> resources/genie_spaces/")
+    imported_resources = move_generated_files(
+        resources_dir, target_resources_dir, ["*.yml"], normalize_yaml=True
+    )
+    imported_sources = move_generated_files(
+        src_dir, target_src_dir, ["*.geniespace.json", "*.json"]
+    )
 
-    # Mover archivos creados en 'src/' a 'src/genie_spaces/'
-    for filepath in glob.glob(
-        os.path.join(src_dir, "*.geniespace.json")
-    ) + glob.glob(os.path.join(src_dir, "*.json")):
-        if os.path.isfile(filepath):
-            filename = os.path.basename(filepath)
-            dest = os.path.join(target_src_dir, filename)
-            shutil.move(filepath, dest)
-            print(f"Importado: {filename} -> src/genie_spaces/")
+    for filename in imported_resources:
+        print(f"Importado: {filename} -> resources/genie_spaces/")
+    for filename in imported_sources:
+        print(f"Importado: {filename} -> src/genie_spaces/")
 
     print("\n¡Archivos de Genie Space generados y organizados exitosamente!")
 

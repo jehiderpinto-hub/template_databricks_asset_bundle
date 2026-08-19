@@ -1,8 +1,8 @@
 import argparse
 import shutil
-import subprocess
-import sys
 from pathlib import Path
+
+from common import run_subprocess
 
 
 OUTPUT_FILE_NAMES = {
@@ -18,6 +18,7 @@ def export_workspace_directory(
     staging_directory: Path,
     profile: str | None,
 ) -> None:
+    """Exporta una carpeta remota del Workspace a un staging local."""
     command = [
         "databricks",
         "workspace",
@@ -28,7 +29,7 @@ def export_workspace_directory(
     if profile:
         command.extend(["--profile", profile])
 
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = run_subprocess(command, Path.cwd(), capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip())
 
@@ -38,6 +39,7 @@ def retrieve_outputs(
     output_directory: Path,
     profile: str | None,
 ) -> list[Path]:
+    """Copia las salidas permitidas desde Workspace a la carpeta local."""
     output_directory.mkdir(parents=True, exist_ok=True)
     staging_directory = output_directory / ".workspace_export"
     if staging_directory.exists():
@@ -63,6 +65,7 @@ def retrieve_outputs(
 
 
 def main() -> None:
+    """Configura la CLI y recupera los archivos del assessment."""
     parser = argparse.ArgumentParser(
         description="Recupera las salidas del Genie Assessment dentro del bundle local."
     )
