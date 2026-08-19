@@ -1,3 +1,5 @@
+"""Ejecuta benchmarks de Genie vía API y evalúa su umbral de calidad."""
+
 import argparse
 import difflib
 import json
@@ -5,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from common import read_json_file
+from comun import read_json_file
 from databricks.sdk import WorkspaceClient
 
 

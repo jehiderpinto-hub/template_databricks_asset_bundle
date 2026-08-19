@@ -13,9 +13,7 @@
     "brz_dev.default.mv_sales_demo_genie"
   ],
   "business_questions": [
-    "¿Cuáles fueron las ventas netas por año?",
-    "¿Cuál es el top 5 de productos con mayores ventas?",
-    "¿Cuántas unidades se vendieron por producto?"
+    "¿Cuál es el top 5 de productos con mayores ventas?"
   ],
   "warehouse_id": "6fadc34945c1c177",
   "llm_endpoint": "databricks-claude-sonnet-4-6",

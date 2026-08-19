@@ -1,3 +1,5 @@
+"""Genera un Genie Space existente y organiza sus archivos en el bundle."""
+
 import argparse
 import glob
 import os
@@ -6,7 +8,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from common import run_subprocess
+from comun import run_subprocess
 
 
 def normalize_genie_resource_file_path(resource_file: str) -> None:

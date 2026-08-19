@@ -1,10 +1,15 @@
+"""Orquesta el flujo completo de generación, validación y despliegue de un Genie Space."""
+
 import argparse
 import json
 import sys
 from pathlib import Path
 
-from common import run_subprocess
-from workspace_transaction import LocalProjectTransaction
+import yaml
+from comun import run_subprocess
+from crear_genie_desde_entradas import build_config, create_files
+from leer_estructura_genie import write_config
+from transaccion_proyecto import LocalProjectTransaction
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -82,7 +87,51 @@ def parse_arguments() -> argparse.Namespace:
         default="genie_space_manual",
         help="Título del Genie Space creado cuando no se proporciona existing-id.",
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Archivo YAML declarativo para ejecutar el pipeline sin interacción.",
+    )
     return parser.parse_args()
+
+
+def load_pipeline_config(config_file: Path) -> dict:
+    """Lee la configuración declarativa del pipeline."""
+    with config_file.open(encoding="utf-8") as file:
+        config = yaml.safe_load(file) or {}
+    if not isinstance(config, dict):
+        raise ValueError("La configuración del pipeline debe ser un objeto YAML")
+    return config
+
+
+def apply_pipeline_config(args: argparse.Namespace, config: dict) -> None:
+    """Aplica valores declarativos del YAML sobre los argumentos de ejecución."""
+    for name in [
+        "profile",
+        "target",
+        "existing_id",
+        "title",
+        "warehouse_id",
+        "benchmark_threshold",
+    ]:
+        if name in config and config[name] is not None:
+            setattr(args, name, config[name])
+
+
+def get_config_questions(config: dict) -> list[str]:
+    """Valida y devuelve las preguntas declaradas en el YAML."""
+    questions = config.get("business_questions", [])
+    if not isinstance(questions, list) or not all(isinstance(item, str) for item in questions):
+        raise ValueError("business_questions debe ser una lista de textos")
+    return questions
+
+
+def get_config_sources(config: dict) -> list[str]:
+    """Valida y devuelve las fuentes declaradas en el YAML."""
+    sources = config.get("sources", [])
+    if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
+        raise ValueError("sources debe ser una lista de textos")
+    return sources
 
 
 def ask_yes_no(question: str) -> bool:
@@ -96,14 +145,14 @@ def ask_yes_no(question: str) -> bool:
         print("Respuesta inválida. Usa y/n.")
 
 
-def generate_genie_space(existing_id: str, profile: str) -> tuple[Path, Path]:
+def generar_genie_space_existente(existing_id: str, profile: str) -> tuple[Path, Path]:
     """Genera el Genie Space y devuelve sus rutas YAML y JSON organizadas."""
     yaml_files_before = get_files(RESOURCES_DIRECTORY, "*.genie_space.yml")
     json_files_before = get_files(SOURCE_DIRECTORY, "*.geniespace.json")
     run_command(
         [
             sys.executable,
-            "utils/generate_genie_space.py",
+            "utils/generar_genie.py",
             "--existing-id",
             existing_id,
             "--profile",
@@ -122,7 +171,7 @@ def generate_config(yaml_file: Path, json_file: Path) -> None:
     run_command(
         [
             sys.executable,
-            "utils/read_genie_structure.py",
+            "utils/leer_estructura_genie.py",
             "--yml",
             str(yaml_file.relative_to(PROJECT_ROOT)),
             "--json",
@@ -132,18 +181,36 @@ def generate_config(yaml_file: Path, json_file: Path) -> None:
     )
 
 
-def create_manual_genie_space(title: str, warehouse_id: str) -> tuple[Path, Path]:
+def create_manual_genie_space(
+    title: str,
+    warehouse_id: str,
+    config: dict | None = None,
+) -> tuple[Path, Path]:
     """Solicita fuentes/preguntas y crea un Genie Space base local."""
     if not warehouse_id:
         warehouse_id = input("Warehouse ID: ").strip()
     if not warehouse_id:
         raise ValueError("warehouse_id es obligatorio para crear un Genie nuevo")
+    if config is not None:
+        sources = get_config_sources(config)
+        questions = get_config_questions(config)
+        if not sources or not questions:
+            raise ValueError("La configuración debe incluir sources y business_questions")
+        yaml_file, json_file, _ = create_files(
+            title,
+            sources,
+            questions,
+            warehouse_id,
+            PROJECT_ROOT,
+        )
+        return yaml_file, json_file
+
     before_yaml = get_files(RESOURCES_DIRECTORY, "*.genie_space.yml")
     before_json = get_files(SOURCE_DIRECTORY, "*.geniespace.json")
     run_command(
         [
             sys.executable,
-            "utils/create_genie_space_from_inputs.py",
+            "utils/crear_genie_desde_entradas.py",
             "--title",
             title,
             "--warehouse-id",
@@ -191,7 +258,7 @@ def refactor_genie(json_file: Path, profile: str) -> None:
     run_command(
         [
             sys.executable,
-            "utils/refactor_genie_space.py",
+            "utils/refactorizar_genie.py",
             "--metric-view-yaml",
             str(output_directory / "genie_proposed_metric_view_brz_dev.yml"),
             "--genie-json",
@@ -212,7 +279,7 @@ def retrieve_assessment_outputs(profile: str) -> None:
     run_command(
         [
             sys.executable,
-            "utils/retrieve_genie_assessment_outputs.py",
+            "utils/recuperar_salidas_assessment.py",
             "--profile",
             profile,
         ],
@@ -229,7 +296,7 @@ def run_benchmarks(
     """Ejecuta benchmarks y detiene el pipeline si no alcanza el umbral."""
     command = [
         sys.executable,
-        "utils/run_genie_benchmarks.py",
+        "utils/ejecutar_benchmarks.py",
         "--genie-space-id",
         genie_space_id,
         "--genie-json",
@@ -259,28 +326,45 @@ def deploy_bundle(target: str, profile: str) -> None:
 def main() -> None:
     """Ejecuta el flujo y conserva las definiciones solo tras un deploy exitoso."""
     args = parse_arguments()
+    pipeline_config = None
+    if args.config:
+        pipeline_config = load_pipeline_config(args.config)
+        apply_pipeline_config(args, pipeline_config)
     with LocalProjectTransaction(PROJECT_ROOT, MANAGED_DIRECTORIES):
         if args.existing_id:
-            yaml_file, json_file = generate_genie_space(args.existing_id, args.profile)
-            generate_config(yaml_file, json_file)
+            yaml_file, json_file = generar_genie_space_existente(
+                args.existing_id, args.profile
+            )
+            if pipeline_config:
+                write_config(
+                    build_config(
+                        get_config_sources(pipeline_config),
+                        get_config_questions(pipeline_config),
+                        pipeline_config.get("warehouse_id", args.warehouse_id),
+                    )
+                )
+            else:
+                generate_config(yaml_file, json_file)
         else:
-            yaml_file, json_file = create_manual_genie_space(args.title, args.warehouse_id)
+            yaml_file, json_file = create_manual_genie_space(
+                args.title,
+                args.warehouse_id,
+                pipeline_config,
+            )
 
         should_validate = (
-            True
-            if not args.existing_id
-            else ask_yes_no("¿Deseas ejecutar la validación del Job?")
+            bool(pipeline_config.get("run_validation", True))
+            if pipeline_config
+            else (True if not args.existing_id else ask_yes_no("¿Deseas ejecutar la validación del Job?"))
         )
         if should_validate:
             validate_and_run_job(args.target, args.profile)
             retrieve_assessment_outputs(args.profile)
 
             should_refactor = (
-                True
-                if not args.existing_id
-                else ask_yes_no(
-                    "¿Deseas refactorizar el Genie usando la propuesta recuperada?"
-                )
+                bool(pipeline_config.get("refactor", True))
+                if pipeline_config
+                else (True if not args.existing_id else ask_yes_no("¿Deseas refactorizar el Genie usando la propuesta recuperada?"))
             )
             if should_refactor:
                 refactor_genie(json_file, args.profile)

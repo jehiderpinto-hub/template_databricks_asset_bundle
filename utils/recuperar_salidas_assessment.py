@@ -1,16 +1,28 @@
+"""Recupera desde Workspace los resultados generados por Genie Assessment."""
+
 import argparse
+import fnmatch
 import shutil
 from pathlib import Path
 
-from common import run_subprocess
+from comun import run_subprocess
 
 
-OUTPUT_FILE_NAMES = {
-    "genie_evidence_payload_brz_dev.json",
-    "genie_final_client_report_brz_dev.json",
-    "genie_proposed_metric_view_brz_dev.yml",
-    "genie_scorecard_brz_dev.xlsx",
-}
+OUTPUT_FILE_PATTERNS = (
+    "genie_evidence_payload_*.json",
+    "genie_final_client_report_*.json",
+    "genie_proposed_metric_view_*.yml",
+    "genie_proposed_metric_view_*.yaml",
+    "genie_scorecard_*.xlsx"
+)
+
+
+def is_assessment_output(file_name: str) -> bool:
+    """Indica si un nombre corresponde a una salida recuperable del assessment."""
+    return any(
+        fnmatch.fnmatch(file_name, pattern)
+        for pattern in OUTPUT_FILE_PATTERNS
+    )
 
 
 def export_workspace_directory(
@@ -49,12 +61,11 @@ def retrieve_outputs(
         export_workspace_directory(workspace_path, staging_directory, profile)
         copied_files: list[Path] = []
 
-        for file_name in OUTPUT_FILE_NAMES:
-            source_file = staging_directory / file_name
-            if not source_file.is_file():
+        for source_file in staging_directory.iterdir():
+            if not source_file.is_file() or not is_assessment_output(source_file.name):
                 continue
 
-            destination_file = output_directory / file_name
+            destination_file = output_directory / source_file.name
             shutil.copy2(source_file, destination_file)
             copied_files.append(destination_file)
 

@@ -9,3 +9,10 @@ scratch/**
 !scratch/README.md
 **/explorations/**
 **/!explorations/README.md
+
+# Genie assessment outputs are generated artifacts, not bundle definitions.
+genie_assessment/temp/*
+!genie_assessment/temp/.gitkeep
+
+# Local pipeline configuration may contain environment-specific values.
+pipeline_config.yml

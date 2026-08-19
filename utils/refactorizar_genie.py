@@ -1,10 +1,12 @@
+"""Crea una Metric View en Unity Catalog y actualiza el JSON del Genie."""
+
 import argparse
 import json
 from pathlib import Path
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
-from common import read_yaml_file
+from comun import read_yaml_file
 
 
 def create_metric_view(

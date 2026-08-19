@@ -1,10 +1,12 @@
+"""Lee la definición de un Genie Space y construye su config de assessment."""
+
 import argparse
 import json
 from pathlib import Path
 from typing import Any
 
 import yaml
-from common import read_json_file, read_yaml_file, validate_file
+from comun import read_json_file, read_yaml_file, validate_file
 
 
 def get_genie_resource(yaml_structure: dict[str, Any]) -> dict[str, Any]:

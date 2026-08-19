@@ -1,10 +1,17 @@
+"""Crea las definiciones YAML, JSON y config de un Genie Space nuevo."""
+
 import argparse
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+SOURCE_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
+TITLE_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def ask_list(label: str) -> list[str]:
@@ -16,6 +23,24 @@ def ask_list(label: str) -> list[str]:
         if not value:
             return values
         values.append(value)
+
+
+def validate_inputs(title: str, sources: list[str], questions: list[str], warehouse_id: str) -> None:
+    """Valida los datos necesarios antes de crear las definiciones del Genie."""
+    if not warehouse_id.strip():
+        raise ValueError("warehouse_id es obligatorio")
+    if not TITLE_PATTERN.fullmatch(title):
+        raise ValueError("title solo puede contener letras, números y guion bajo")
+    if not sources:
+        raise ValueError("Debe indicar al menos una fuente")
+    if not questions:
+        raise ValueError("Debe indicar al menos una pregunta")
+    invalid_sources = [source for source in sources if not SOURCE_PATTERN.fullmatch(source)]
+    if invalid_sources:
+        raise ValueError(
+            "Fuentes inválidas; use el formato catalog.schema.table: "
+            + ", ".join(invalid_sources)
+        )
 
 
 def build_genie_json(sources: list[str], questions: list[str]) -> dict[str, Any]:
@@ -44,9 +69,9 @@ def build_resource_yaml(title: str, warehouse_id: str, json_name: str) -> dict[s
             "genie_spaces": {
                 title: {
                     "title": title,
-                    "warehouse_id": warehouse_id,
+                    "warehouse_id": "${var.assessment_warehouse_id}",
                     "file_path": f"../../src/genie_spaces/{json_name}",
-                    "parent_path": "/Workspace/Users/${workspace.current_user.userName}/GenieSpaces",
+                    "parent_path": "${var.genie_parent_path}",
                 }
             }
         }
@@ -113,8 +138,7 @@ def main() -> None:
 
     sources = ask_list("Fuentes catalog.schema.table")
     questions = ask_list("Preguntas de negocio")
-    if not sources or not questions:
-        raise ValueError("Debe indicar al menos una fuente y una pregunta")
+    validate_inputs(args.title, sources, questions, args.warehouse_id)
     create_files(args.title, sources, questions, args.warehouse_id, args.project_root)
     print("Genie Space base, YAML y config creados correctamente.")
 

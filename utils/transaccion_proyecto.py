@@ -1,4 +1,4 @@
-"""Transacción de archivos locales para el pipeline de Genie."""
+"""Protege el proyecto y revierte archivos generados si falla el pipeline."""
 
 import shutil
 import tempfile
