@@ -189,11 +189,15 @@ def apply_pipeline_config(args: argparse.Namespace, config: dict) -> None:
             setattr(args, name, config[name])
 
 
-def get_config_questions(config: dict) -> list[str]:
+def get_config_questions(config: dict, require_non_empty: bool = False) -> list[str]:
     """Valida y devuelve las preguntas declaradas en el YAML."""
     questions = config.get("business_questions", [])
     if not isinstance(questions, list) or not all(isinstance(item, str) for item in questions):
         raise ValueError("business_questions debe ser una lista de textos")
+    if require_non_empty and not questions:
+        raise ValueError(
+            "business_questions es obligatorio en pipeline_config.yml para ejecutar el pipeline"
+        )
     return questions
 
 
@@ -535,7 +539,7 @@ def generate_config_from_import(
     config = build_imported_genie_config(
         yaml_structure,
         json_structure,
-        get_config_questions(pipeline_config),
+        get_config_questions(pipeline_config, require_non_empty=True),
     )
     if not config["warehouse_id"]:
         raise ValueError("El YAML importado no define warehouse_id")
@@ -555,7 +559,7 @@ def create_manual_genie_space(
     if config is not None:
         CONSOLE.stage("Creando Genie Space desde configuracion declarativa")
         sources = get_config_sources(config)
-        questions = get_config_questions(config)
+        questions = get_config_questions(config, require_non_empty=True)
         if not sources or not questions:
             raise ValueError("La configuración debe incluir sources y business_questions")
         yaml_file, json_file, _ = create_files(
