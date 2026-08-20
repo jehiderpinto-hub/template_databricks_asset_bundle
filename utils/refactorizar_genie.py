@@ -60,6 +60,8 @@ def update_genie_json(json_file: Path, metric_view_identifier: str) -> None:
     if not replaced:
         tables.append({"identifier": metric_view_identifier, "column_configs": []})
 
+    tables.sort(key=lambda table: table.get("identifier", ""))
+
     with json_file.open("w", encoding="utf-8") as file:
         json.dump(genie_space, file, ensure_ascii=False, indent=2)
         file.write("\n")

@@ -6,6 +6,11 @@ include:
   - "resources/*.yml"
   - "resources/**/*.yml"
 
+sync:
+  include:
+    - "genie_assessment/temp/config.json"
+    - "src/notebooks/**"
+
 # --- Declaración Global de Variables ---
 variables:
 

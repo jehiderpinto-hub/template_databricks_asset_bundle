@@ -6,14 +6,12 @@
     "default"
   ],
   "tables": [
-    "brz_dev.default.dim_customer_demo_genie",
-    "brz_dev.default.dim_date_demo_genie",
-    "brz_dev.default.dim_product_demo_genie",
     "brz_dev.default.fact_sales_demo_genie",
-    "brz_dev.default.mv_sales_demo_genie"
+    "brz_dev.default.dim_customer_demo_genie"
   ],
   "business_questions": [
-    "¿Cuál es el top 5 de productos con mayores ventas?"
+    "Cuáles son las ventas por producto?",
+    "Cuántas órdenes existen por segmento?"
   ],
   "warehouse_id": "6fadc34945c1c177",
   "llm_endpoint": "databricks-claude-sonnet-4-6",

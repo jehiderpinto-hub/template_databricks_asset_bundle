@@ -227,10 +227,14 @@ def create_manual_genie_space(
 
 
 def validate_and_run_job(target: str, profile: str) -> None:
-    """Valida el bundle y ejecuta el Job de assessment ya desplegado."""
+    """Valida, sincroniza archivos y ejecuta el Job de assessment ya desplegado."""
     run_command(
         ["databricks", "bundle", "validate", "--target", target, "--profile", profile],
         "Validando bundle",
+    )
+    run_command(
+        ["databricks", "bundle", "sync", "--target", target, "--profile", profile],
+        "Sincronizando config y notebook",
     )
     run_command(
         [

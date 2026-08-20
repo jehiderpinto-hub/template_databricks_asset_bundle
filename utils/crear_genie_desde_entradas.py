@@ -3,7 +3,6 @@
 import argparse
 import json
 import re
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -45,21 +44,20 @@ def validate_inputs(title: str, sources: list[str], questions: list[str], wareho
 
 def build_genie_json(sources: list[str], questions: list[str]) -> dict[str, Any]:
     """Construye un Genie Space base con fuentes y preguntas de negocio."""
-    return {
+    genie_json = {
         "version": 2,
-        "benchmarks": {
-            "questions": [
-                {"id": uuid.uuid4().hex, "question": [question]}
-                for question in questions
-            ]
-        },
         "data_sources": {
             "tables": [
-                {"identifier": source, "column_configs": []} for source in sources
+                {"identifier": source, "column_configs": []}
+                for source in sources
             ]
         },
         "instructions": {},
     }
+    genie_json["data_sources"]["tables"].sort(
+        key=lambda table: table["identifier"]
+    )
+    return genie_json
 
 
 def build_resource_yaml(title: str, warehouse_id: str, json_name: str) -> dict[str, Any]:
