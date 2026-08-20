@@ -1,0 +1,7 @@
+resources:
+  genie_spaces:
+    genie_space_manual_2:
+      title: genie_space_manual_2
+      warehouse_id: ${var.assessment_warehouse_id}
+      file_path: ../../src/genie_spaces/genie_space_manual_2.geniespace.json
+      parent_path: ${var.genie_parent_path}

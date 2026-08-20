@@ -3,77 +3,107 @@ version: 1.1
 source: brz_dev.default.fact_sales_demo_genie
 
 joins:
+  - name: dim_date
+    source: brz_dev.default.dim_date_demo_genie
+    "on": source.date_id = dim_date.date_id
   - name: dim_customer
     source: brz_dev.default.dim_customer_demo_genie
     "on": source.customer_id = dim_customer.customer_id
+  - name: dim_product
+    source: brz_dev.default.dim_product_demo_genie
+    "on": source.product_id = dim_product.product_id
 
-comment: "Vista semántica central de ventas. Cada fila representa una línea de producto dentro de una orden. Permite analizar ventas brutas, netas, descuentos y conteo de órdenes por producto, cliente, segmento de mercado y fecha."
+comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de fecha, cliente y producto para responder preguntas sobre ingresos, descuentos, unidades vendidas y órdenes, segmentados por año, mes, cliente y producto."
 
 dimensions:
-  - name: Product ID
-    expr: source.product_id
-    comment: "Identificador del producto vendido. Úsalo para agrupar ventas por producto."
+  - name: Año
+    expr: dim_date.year
+    comment: "Año calendario en que se realizó la venta."
     synonyms:
-      - producto
-      - id producto
-  - name: Order ID
-    expr: source.order_id
-    comment: "Identificador de la orden de venta."
+      - year
+      - anio
+  - name: Mes
+    expr: dim_date.month
+    comment: "Número del mes en que se realizó la venta."
     synonyms:
-      - orden
-      - id orden
-  - name: Line Number
-    expr: source.line_number
-    comment: "Número de línea dentro de la orden."
+      - month
+      - numero de mes
+  - name: Nombre del Mes
+    expr: dim_date.month_name
+    comment: "Nombre del mes en que se realizó la venta."
     synonyms:
-      - línea
-      - línea de orden
-  - name: Date
+      - month name
+      - mes
+  - name: Fecha
     expr: source.date_id
-    comment: "Fecha en la que se realizó la orden."
+    comment: "Fecha exacta en que se realizó la orden."
     synonyms:
-      - fecha
-      - fecha de venta
-  - name: Customer ID
+      - date
+      - fecha de orden
+  - name: ID Cliente
     expr: source.customer_id
     comment: "Identificador único del cliente."
     synonyms:
+      - customer id
       - cliente id
-      - id cliente
-  - name: Customer Name
+  - name: Nombre Cliente
     expr: dim_customer.customer_name
-    comment: "Nombre completo del cliente."
+    comment: "Nombre completo del cliente que realizó la orden."
     synonyms:
-      - nombre cliente
+      - customer name
       - cliente
-  - name: Market Segment
+  - name: Segmento de Mercado
     expr: dim_customer.market_segment
-    comment: "Segmento de mercado al que pertenece el cliente. Úsalo para agrupar órdenes y ventas por segmento."
+    comment: "Segmento de mercado al que pertenece el cliente."
     synonyms:
+      - market segment
       - segmento
-      - segmento de mercado
-  - name: Nation ID
-    expr: dim_customer.nation_id
-    comment: "Identificador de la nación del cliente."
+  - name: ID Producto
+    expr: source.product_id
+    comment: "Identificador único del producto vendido."
     synonyms:
-      - nación
-      - país id
+      - product id
+      - producto id
+  - name: Nombre Producto
+    expr: dim_product.product_name
+    comment: "Nombre descriptivo del producto vendido."
+    synonyms:
+      - product name
+      - producto
+  - name: Tipo de Producto
+    expr: dim_product.product_type
+    comment: "Categoría o tipo del producto."
+    synonyms:
+      - product type
+      - categoria producto
+  - name: Marca
+    expr: dim_product.brand
+    comment: "Marca comercial del producto."
+    synonyms:
+      - brand
+      - marca producto
+  - name: Fabricante
+    expr: dim_product.manufacturer
+    comment: "Fabricante del producto."
+    synonyms:
+      - manufacturer
+      - proveedor
+  - name: ID Orden
+    expr: source.order_id
+    comment: "Identificador de la orden de venta."
+    synonyms:
+      - order id
+      - orden
+  - name: Número de Línea
+    expr: source.line_number
+    comment: "Número de línea dentro de la orden."
+    synonyms:
+      - line number
+      - linea
 
 measures:
-  - name: Gross Sales
-    expr: SUM(source.gross_sales)
-    comment: "Suma del valor bruto de ventas antes de aplicar descuentos."
-    format:
-      type: currency
-      currency_code: USD
-      decimal_places:
-        type: exact
-        places: 2
-    synonyms:
-      - ventas brutas
-      - venta bruta
-  - name: Net Sales
-    expr: SUM(source.net_sales)
+  - name: Ventas Netas
+    expr: SUM(net_sales)
     comment: "Suma del valor neto de ventas después de aplicar descuentos."
     format:
       type: currency
@@ -82,10 +112,22 @@ measures:
         type: exact
         places: 2
     synonyms:
-      - ventas netas
-      - venta neta
-  - name: Total Discount
-    expr: SUM(source.discount)
+      - net sales
+      - ingresos netos
+  - name: Ventas Brutas
+    expr: SUM(gross_sales)
+    comment: "Suma del valor bruto de ventas antes de aplicar descuentos."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - gross sales
+      - ingresos brutos
+  - name: Descuento Total
+    expr: SUM(discount)
     comment: "Suma total de descuentos aplicados."
     format:
       type: currency
@@ -94,38 +136,74 @@ measures:
         type: exact
         places: 2
     synonyms:
-      - descuento total
+      - total discount
       - descuentos
-  - name: Total Quantity
-    expr: SUM(source.quantity)
-    comment: "Suma total de unidades vendidas."
+  - name: Descuento Promedio
+    expr: AVG(discount)
+    comment: "Descuento promedio aplicado por línea de venta. Útil para analizar el descuento promedio por cliente o producto."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - average discount
+      - promedio descuento
+  - name: Diferencia Bruto vs Neto
+    expr: SUM(gross_sales) - SUM(net_sales)
+    comment: "Diferencia entre ventas brutas y ventas netas, equivalente al total de descuentos aplicados."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - gross net difference
+      - diferencia ventas
+  - name: Unidades Vendidas
+    expr: SUM(quantity)
+    comment: "Total de unidades vendidas."
     format:
       type: number
       decimal_places:
         type: exact
         places: 2
     synonyms:
-      - cantidad total
-      - unidades vendidas
-  - name: Number of Orders
-    expr: COUNT(DISTINCT source.order_id)
-    comment: "Conteo de órdenes únicas. Úsalo para responder cuántas órdenes existen por segmento u otra dimensión."
+      - quantity sold
+      - cantidad vendida
+  - name: Número de Órdenes
+    expr: COUNT(DISTINCT order_id)
+    comment: "Cantidad de órdenes únicas realizadas."
     format:
       type: number
       decimal_places:
         type: exact
         places: 2
     synonyms:
-      - órdenes
-      - total órdenes
-  - name: Number of Order Lines
+      - order count
+      - total ordenes
+  - name: Ingreso Neto Promedio por Orden
+    expr: SUM(net_sales) / COUNT(DISTINCT order_id)
+    comment: "Ingreso neto promedio generado por cada orden única."
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - average net revenue per order
+      - ticket promedio
+  - name: Número de Líneas de Venta
     expr: COUNT(*)
-    comment: "Conteo de líneas de orden (filas en la tabla de hechos)."
+    comment: "Total de líneas de producto en las órdenes de venta."
     format:
       type: number
       decimal_places:
         type: exact
         places: 2
     synonyms:
-      - líneas de orden
-      - registros de venta
+      - line count
+      - total lineas

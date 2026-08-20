@@ -1,5 +1,5 @@
 {
-  "report_generated_at": "2026-08-20T15:46:04.184778+00:00",
+  "report_generated_at": "2026-08-20T15:56:45.870217+00:00",
   "metadata_quality": {
     "table_descriptions": {
       "coverage_pct": 100.0,
@@ -10,8 +10,8 @@
       "status": "GREEN"
     },
     "relationships": {
-      "tables_analyzed": 2,
-      "tables_with_pk": 2,
+      "tables_analyzed": 4,
+      "tables_with_pk": 4,
       "tables_with_fk": 1,
       "status": "GREEN"
     },
@@ -26,33 +26,94 @@
     }
   },
   "llm_expert_review": {
-    "summary": "The Unity Catalog metadata is in strong foundational health, with 100% coverage on both table and column descriptions and all analyzed tables carrying primary key definitions along with one foreign key relationship established. The single critical gap is the complete absence of example SQL queries, which are essential for Genie to learn domain-specific query patterns and business logic. Overall, the catalog is well-documented structurally but lacks the instructional query layer that Genie relies on for accurate SQL generation.",
-    "genie_impact_analysis": "The RED status on existing SQL queries (0 relevant queries) is the most significant risk to Genie's performance. Without example queries, Genie has no reference patterns for how business users typically interrogate this data — it cannot infer common aggregations, preferred join paths, business-defined filters (e.g., active records, fiscal periods), or domain-specific metric calculations. Even with perfect table and column descriptions, Genie will default to generic SQL construction, increasing the likelihood of semantically incorrect results, misused columns, and queries that technically execute but answer the wrong business question. The two-table scope with only one foreign key also means relationship coverage is minimal; as the data model grows, undocumented relationships will compound the query-generation risk.",
+    "summary": "The Unity Catalog metadata is in strong foundational health, with 100% coverage on both table and column descriptions and all four analyzed tables having primary keys defined. However, a critical gap exists: there are zero existing SQL queries registered, which is a significant readiness concern for Databricks Genie's ability to generate accurate and contextually relevant SQL out of the box.",
+    "genie_impact_analysis": "The absence of any existing SQL queries (RED status) is the most impactful gap for Genie readiness. Genie leverages curated SQL query examples as few-shot learning context to understand business logic, naming conventions, common join patterns, and domain-specific query structures. Without these examples, Genie must rely solely on table/column descriptions and schema inference, which increases the likelihood of generating syntactically valid but semantically incorrect SQL — particularly for complex business questions involving multi-table joins, aggregations, or domain-specific filters. Additionally, while foreign key coverage is present on only 1 of 4 tables, the lack of SQL examples means Genie cannot compensate by learning join patterns from historical queries, further amplifying the risk of incorrect relationship traversal in generated SQL.",
     "recommended_next_steps": [
-      "Immediately create and register a minimum of 10–15 representative example SQL queries per subject area in the Genie Space, covering the most common business questions (e.g., aggregations, filtered lookups, multi-table joins). These should reflect real analyst queries and include comments explaining business intent, as Genie uses these as few-shot learning anchors for SQL generation.",
-      "Audit and explicitly define the foreign key relationship on the second table that currently lacks one, and as new tables are onboarded, enforce a metadata-first policy requiring primary keys, foreign keys, and at least 3–5 example queries before a table is made available to Genie.",
-      "Establish a recurring metadata quality review cadence (e.g., bi-weekly) using the pre-analysis framework to monitor query coverage growth and relationship completeness as the catalog scales beyond the current two-table scope.",
-      "Leverage the existing 100% description coverage as a baseline and enrich column descriptions with business-context hints such as accepted value ranges, enumeration meanings, and calculation logic — this further compensates for the low example-query count while the query library is being built."
+      "Immediately curate and register a library of at least 10–20 representative, high-quality SQL queries in the Genie Space covering the most common business questions, key join patterns across all 4 tables, and domain-specific aggregations — this is the single highest-priority action to improve Genie accuracy.",
+      "Add foreign key constraints to the remaining 3 tables that currently lack them, ensuring Genie can reliably infer and traverse table relationships without depending solely on SQL examples or column name heuristics.",
+      "For each registered SQL query, include descriptive natural language annotations or query names that map business terminology to technical logic, enabling Genie to better match user intent phrased in business language to the correct SQL patterns.",
+      "Establish a continuous feedback loop by reviewing Genie-generated SQL responses during initial rollout, identifying recurring errors, and adding corrective SQL examples to the curated query library to iteratively improve response quality."
     ]
   },
   "semantic_validation": [
     {
-      "answerable": "PARTIAL",
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_date_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN brz_dev.default.dim_date_demo_genie ON fact_sales_demo_genie.date_id = dim_date_demo_genie.date_id"
+      ],
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "Las ventas netas por año se pueden calcular sumando el campo net_sales de la tabla de hechos agrupado por el año de la dimensión de fechas. Por ejemplo: Año 2021: $X, Año 2022: $Y, Año 2023: $Z.",
+      "generated_sql": "SELECT\n    d.year,\n    SUM(f.net_sales) AS total_net_sales\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_date_demo_genie d\n        ON f.date_id = d.date_id\nGROUP BY\n    d.year\nORDER BY\n    d.year ASC;",
+      "reasoning": "La pregunta solicita las ventas netas agrupadas por año. La tabla fact_sales_demo_genie contiene el campo net_sales (ventas netas) y la clave foránea date_id. La tabla dim_date_demo_genie contiene el campo year que permite agrupar por año. Un simple JOIN entre ambas tablas y una agregación SUM sobre net_sales agrupada por year es suficiente para responder la pregunta de forma completa y sin ambigüedades.",
+      "business_question": "¿Cuáles fueron las ventas netas por año?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_product_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN dim_product_demo_genie ON fact_sales_demo_genie.product_id = dim_product_demo_genie.product_id"
+      ],
+      "missing_elements": [],
+      "confidence": 9,
+      "actual_answer": "El top 5 de productos con mayores ventas netas serían los 5 productos con mayor suma de net_sales en la tabla de hechos, identificados por su nombre en dim_product_demo_genie. Por ejemplo: Producto A ($5,200,000), Producto B ($4,800,000), Producto C ($4,100,000), Producto D ($3,750,000), Producto E ($3,200,000).",
+      "generated_sql": "SELECT\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type,\n    SUM(f.net_sales) AS total_net_sales,\n    SUM(f.gross_sales) AS total_gross_sales,\n    SUM(f.quantity) AS total_quantity\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_product_demo_genie p\n        ON f.product_id = p.product_id\nGROUP BY\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type\nORDER BY\n    total_net_sales DESC\nLIMIT 5;",
+      "reasoning": "La pregunta solicita el top 5 de productos con mayores ventas. La tabla fact_sales_demo_genie contiene las métricas de ventas (net_sales, gross_sales, quantity) y la clave foránea product_id. La tabla dim_product_demo_genie contiene el nombre descriptivo del producto. Con un simple JOIN, agregación por producto y ordenamiento descendente por ventas netas (net_sales), se puede responder la pregunta. Se usa net_sales como métrica principal de ventas ya que representa el valor real después de descuentos, aunque también se incluye gross_sales para referencia. La pregunta es directamente respondible con los datos disponibles.",
+      "business_question": "¿Cuál es el top 5 de productos con mayores ventas?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_product_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN dim_product_demo_genie ON fact_sales_demo_genie.product_id = dim_product_demo_genie.product_id"
+      ],
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "Las unidades vendidas por producto se obtienen sumando la columna 'quantity' de la tabla de hechos agrupada por producto. Por ejemplo: Producto A → 1,200 unidades, Producto B → 850 unidades, Producto C → 2,300 unidades, etc.",
+      "generated_sql": "SELECT\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type,\n    SUM(f.quantity) AS total_units_sold\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_product_demo_genie p\n        ON f.product_id = p.product_id\nGROUP BY\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type\nORDER BY\n    total_units_sold DESC;",
+      "reasoning": "La pregunta solicita la suma de unidades vendidas agrupadas por producto. La tabla de hechos 'fact_sales_demo_genie' contiene la columna 'quantity' (unidades vendidas) y la llave foránea 'product_id'. La dimensión 'dim_product_demo_genie' contiene los atributos descriptivos del producto (nombre, marca, tipo). Un simple JOIN entre ambas tablas y un GROUP BY sobre product_id/product_name con SUM(quantity) responde completamente la pregunta. No hay ambigüedad ni datos faltantes.",
+      "business_question": "¿Cuántas unidades se vendieron por producto?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_customer_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN brz_dev.default.dim_customer_demo_genie ON fact_sales_demo_genie.customer_id = dim_customer_demo_genie.customer_id"
+      ],
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "El descuento promedio por cliente varía según cada uno. Por ejemplo, el cliente 'Empresa ABC' tiene un descuento promedio de $150.00 por línea de venta, mientras que 'Distribuidora XYZ' tiene un promedio de $85.50. La consulta devuelve el promedio del campo 'discount' agrupado por cada cliente.",
+      "generated_sql": "SELECT\n    c.customer_id,\n    c.customer_name,\n    AVG(f.discount) AS avg_discount\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_customer_demo_genie c\n        ON f.customer_id = c.customer_id\nGROUP BY\n    c.customer_id,\n    c.customer_name\nORDER BY\n    avg_discount DESC;",
+      "reasoning": "La pregunta solicita el descuento promedio por cliente. La tabla de hechos 'fact_sales_demo_genie' contiene la columna 'discount' (descuento aplicado a cada línea de venta) y 'customer_id' como llave foránea. La dimensión 'dim_customer_demo_genie' aporta el nombre del cliente. Con un simple JOIN y un AVG(discount) agrupado por customer_id y customer_name, la pregunta queda completamente respondida. No hay ambigüedad en la definición del descuento promedio ya que existe una columna explícita para ello.",
+      "business_question": "¿Cuál es el descuento promedio por cliente?"
+    },
+    {
+      "answerable": "YES",
       "required_tables": [
         "brz_dev.default.fact_sales_demo_genie"
       ],
       "required_joins": [
-        "No join strictly required; product_id is available in fact_sales_demo_genie. However, a dim_product table would be needed to show product names instead of IDs."
+        "No joins required. The fact_sales_demo_genie table contains order_id which can be counted distinctly to get the total number of orders."
       ],
-      "missing_elements": [
-        "No dim_product table is available in the schema, so product names cannot be retrieved — only product_id can be used as the grouping key.",
-        "Ambiguity in 'ventas': could mean gross_sales, net_sales, or quantity of units sold. The question does not specify which metric to use."
-      ],
-      "confidence": 5,
-      "actual_answer": "Las ventas netas por producto (identificado por product_id) muestran el total acumulado de cada producto. Por ejemplo, el producto con product_id 1 podría tener ventas netas de $X, el producto 2 de $Y, etc. Sin embargo, no es posible mostrar los nombres de los productos ya que no existe una tabla de dimensión de productos en el esquema disponible.",
-      "generated_sql": "SELECT\n    product_id,\n    SUM(gross_sales)  AS total_gross_sales,\n    SUM(discount)     AS total_discount,\n    SUM(net_sales)    AS total_net_sales,\n    SUM(quantity)     AS total_quantity\nFROM\n    brz_dev.default.fact_sales_demo_genie\nGROUP BY\n    product_id\nORDER BY\n    total_net_sales DESC;",
-      "reasoning": "The fact_sales_demo_genie table contains product_id, gross_sales, net_sales, discount, and quantity, which are sufficient to aggregate sales by product. However, the question is marked PARTIAL for two reasons: (1) there is no dim_product table in the schema, so product names cannot be displayed — only numeric IDs are available; (2) the term 'ventas' is ambiguous (gross vs. net vs. units). The SQL provided returns all three metrics to cover the ambiguity, but a business user would need to confirm which measure is relevant. If a dim_product table were added to the catalog, the answer could be upgraded to YES.",
-      "business_question": "Cuáles son las ventas por producto?"
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "El total de órdenes realizadas se obtiene contando los valores distintos de order_id en la tabla de hechos de ventas. Por ejemplo, si existen 15,000 valores únicos de order_id, entonces se realizaron 15,000 órdenes en total.",
+      "generated_sql": "SELECT COUNT(DISTINCT order_id) AS total_orders\nFROM brz_dev.default.fact_sales_demo_genie;",
+      "reasoning": "La pregunta solicita el conteo total de órdenes. La tabla fact_sales_demo_genie contiene la columna order_id, que identifica cada orden. Dado que una orden puede tener múltiples líneas de producto (y por tanto múltiples filas con el mismo order_id), se debe usar COUNT(DISTINCT order_id) para obtener el número real de órdenes únicas. No se requieren joins adicionales ni información de otras tablas para responder esta pregunta.",
+      "business_question": "¿Cuántas órdenes se realizaron en total?"
     },
     {
       "answerable": "YES",
@@ -64,164 +125,329 @@
         "JOIN dim_customer_demo_genie ON fact_sales_demo_genie.customer_id = dim_customer_demo_genie.customer_id"
       ],
       "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "Los 10 clientes con mayores ventas brutas son aquellos cuya suma de gross_sales en la tabla de hechos es más alta. Por ejemplo, el cliente con mayor venta bruta podría ser 'Cliente A' con $X millones, seguido de 'Cliente B' con $Y millones, y así sucesivamente hasta completar el top 10.",
+      "generated_sql": "SELECT\n    c.customer_id,\n    c.customer_name,\n    SUM(f.gross_sales) AS total_gross_sales\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_customer_demo_genie c\n        ON f.customer_id = c.customer_id\nGROUP BY\n    c.customer_id,\n    c.customer_name\nORDER BY\n    total_gross_sales DESC\nLIMIT 10;",
+      "reasoning": "La pregunta solicita los 10 clientes con mayores ventas brutas. La tabla fact_sales_demo_genie contiene la columna gross_sales y customer_id, y la tabla dim_customer_demo_genie contiene el nombre del cliente (customer_name) junto con su identificador (customer_id). Con un simple JOIN entre ambas tablas, una agregación SUM sobre gross_sales agrupada por cliente, y un ORDER BY DESC con LIMIT 10, se puede responder la pregunta de forma completa y precisa. No hay ambigüedad ni datos faltantes.",
+      "business_question": "¿Cuáles son los 10 clientes con mayores ventas brutas?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_date_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN brz_dev.default.dim_date_demo_genie ON fact_sales_demo_genie.date_id = dim_date_demo_genie.date_id"
+      ],
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "La diferencia entre ventas brutas y ventas netas (es decir, el total de descuentos aplicados) por año sería, por ejemplo: en 2022 las ventas brutas fueron $5,000,000, las ventas netas $4,500,000 y la diferencia (descuentos) fue de $500,000; en 2023 las ventas brutas fueron $6,200,000, las ventas netas $5,600,000 y la diferencia fue de $600,000. (Los valores exactos dependen de los datos reales en la tabla.)",
+      "generated_sql": "SELECT\n    d.year,\n    SUM(f.gross_sales)                        AS total_gross_sales,\n    SUM(f.net_sales)                           AS total_net_sales,\n    SUM(f.gross_sales) - SUM(f.net_sales)      AS difference_gross_vs_net,\n    SUM(f.discount)                            AS total_discount\nFROM brz_dev.default.fact_sales_demo_genie f\nJOIN brz_dev.default.dim_date_demo_genie d\n    ON f.date_id = d.date_id\nGROUP BY d.year\nORDER BY d.year;",
+      "reasoning": "La pregunta solicita la diferencia entre ventas brutas (gross_sales) y ventas netas (net_sales) agrupada por año. Ambas métricas existen directamente en la tabla de hechos 'fact_sales_demo_genie'. El año se obtiene haciendo un JOIN con 'dim_date_demo_genie' usando la clave 'date_id'. La diferencia entre ambas columnas equivale al descuento total aplicado, que también está disponible en la columna 'discount'. No hay ambigüedad ni datos faltantes; la pregunta es completamente respondible con las tablas disponibles.",
+      "business_question": "¿Cuál es la diferencia entre ventas brutas y ventas netas por año?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_date_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN brz_dev.default.dim_date_demo_genie ON fact_sales_demo_genie.date_id = dim_date_demo_genie.date_id"
+      ],
+      "missing_elements": [],
       "confidence": 9,
-      "actual_answer": "El número de órdenes por segmento de mercado varía según los datos. Por ejemplo, el segmento 'AUTOMOBILE' podría tener 29,000 órdenes, 'BUILDING' 27,500, 'FURNITURE' 28,000, 'HOUSEHOLD' 28,500 y 'MACHINERY' 27,000 (valores hipotéticos). Para obtener los valores reales se debe ejecutar la consulta SQL correspondiente.",
-      "generated_sql": "SELECT\n    c.market_segment,\n    COUNT(DISTINCT f.order_id) AS total_orders\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_customer_demo_genie c\n        ON f.customer_id = c.customer_id\nGROUP BY\n    c.market_segment\nORDER BY\n    total_orders DESC;",
-      "reasoning": "La pregunta solicita el conteo de órdenes agrupadas por segmento de mercado. La tabla fact_sales_demo_genie contiene el campo order_id (que puede repetirse por línea de producto) y customer_id. La tabla dim_customer_demo_genie contiene el campo market_segment y customer_id como llave primaria. Uniendo ambas tablas por customer_id y aplicando COUNT(DISTINCT order_id) agrupado por market_segment se responde completamente la pregunta. Se usa DISTINCT en order_id porque una orden puede tener múltiples líneas de producto y no queremos contarla más de una vez.",
-      "business_question": "Cuántas órdenes existen por segmento?"
+      "actual_answer": "En el último año (2024, por ejemplo), las unidades vendidas por mes fueron: Enero: 12,500 unidades, Febrero: 11,800 unidades, Marzo: 13,200 unidades, ... (los valores exactos dependerán de los datos reales en la tabla).",
+      "generated_sql": "SELECT\n    d.year,\n    d.month,\n    d.month_name,\n    SUM(f.quantity) AS total_units_sold\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_date_demo_genie d\n        ON f.date_id = d.date_id\nWHERE\n    d.year = (\n        SELECT MAX(year)\n        FROM brz_dev.default.dim_date_demo_genie\n    )\nGROUP BY\n    d.year,\n    d.month,\n    d.month_name\nORDER BY\n    d.month ASC;",
+      "reasoning": "La pregunta solicita el total de unidades vendidas (quantity) agrupadas por mes, restringidas al último año disponible. La tabla de hechos 'fact_sales_demo_genie' contiene la columna 'quantity' (unidades vendidas) y 'date_id' como llave foránea hacia la dimensión de fechas. La tabla 'dim_date_demo_genie' provee las columnas 'year', 'month' y 'month_name' necesarias para la agrupación mensual. El 'último año' se puede derivar dinámicamente usando MAX(year) sobre la dimensión de fechas, lo cual es una derivación SQL estándar. No hay ambigüedad en la pregunta ni datos faltantes.",
+      "business_question": "¿Cuántas unidades se vendieron por mes en el último año?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie",
+        "brz_dev.default.dim_product_demo_genie"
+      ],
+      "required_joins": [
+        "JOIN dim_product_demo_genie ON fact_sales_demo_genie.product_id = dim_product_demo_genie.product_id"
+      ],
+      "missing_elements": [],
+      "confidence": 9,
+      "actual_answer": "Los productos con un descuento promedio mayor al 10% son aquellos cuyo promedio de la columna 'discount' en la tabla de hechos supera el 10% del valor bruto de venta (gross_sales). Por ejemplo, podrían ser productos como 'Producto A' con un descuento promedio del 12%, 'Producto B' con 15%, etc. La lista exacta depende de los datos reales.",
+      "generated_sql": "SELECT\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type,\n    p.manufacturer,\n    AVG(f.discount) AS avg_discount,\n    AVG(f.gross_sales) AS avg_gross_sales,\n    AVG(f.discount / NULLIF(f.gross_sales, 0)) * 100 AS avg_discount_pct\nFROM\n    brz_dev.default.fact_sales_demo_genie f\n    JOIN brz_dev.default.dim_product_demo_genie p\n        ON f.product_id = p.product_id\nGROUP BY\n    p.product_id,\n    p.product_name,\n    p.brand,\n    p.product_type,\n    p.manufacturer\nHAVING\n    AVG(f.discount / NULLIF(f.gross_sales, 0)) * 100 > 10\nORDER BY\n    avg_discount_pct DESC;",
+      "reasoning": "La pregunta solicita productos cuyo descuento promedio supere el 10%. La tabla 'fact_sales_demo_genie' contiene las columnas 'discount' y 'gross_sales', lo que permite calcular el porcentaje de descuento promedio por producto (discount / gross_sales * 100). La tabla 'dim_product_demo_genie' proporciona los atributos descriptivos del producto (nombre, marca, tipo, fabricante). Se asume que el '10%' se refiere al porcentaje del descuento respecto al valor bruto de venta, que es la interpretación más estándar en contextos comerciales. El JOIN entre ambas tablas se realiza mediante product_id. La consulta agrupa por producto, calcula el porcentaje promedio de descuento y filtra aquellos que superan el 10%.",
+      "business_question": "¿Qué productos tienen un descuento promedio mayor al 10%?"
+    },
+    {
+      "answerable": "YES",
+      "required_tables": [
+        "brz_dev.default.fact_sales_demo_genie"
+      ],
+      "required_joins": [
+        "No joins required. All necessary data (net_sales and order_id) is contained within fact_sales_demo_genie."
+      ],
+      "missing_elements": [],
+      "confidence": 10,
+      "actual_answer": "El ingreso neto promedio por orden es el resultado de dividir la suma total de net_sales entre el número de órdenes únicas (order_id). Por ejemplo, si la suma total de net_sales es $10,000,000 y existen 500 órdenes únicas, el ingreso neto promedio por orden sería $20,000.",
+      "generated_sql": "SELECT\n  SUM(net_sales) / COUNT(DISTINCT order_id) AS avg_net_sales_per_order\nFROM\n  brz_dev.default.fact_sales_demo_genie;",
+      "reasoning": "La pregunta solicita el ingreso neto promedio por orden. La tabla fact_sales_demo_genie contiene tanto 'net_sales' (valor neto de la venta) como 'order_id' (identificador de la orden). Dado que una orden puede tener múltiples líneas de producto, el ingreso neto por orden se calcula sumando net_sales agrupado por order_id, y luego promediando esos totales. Esto es equivalente a dividir la suma total de net_sales entre el número de órdenes únicas (COUNT DISTINCT order_id). No se requieren joins adicionales ni existe ambigüedad en la definición del indicador.",
+      "business_question": "¿Cuál es el ingreso neto promedio por orden?"
     }
   ],
   "query_classification": [],
   "consolidated_mv_design": {
-    "consolidation_reasoning": "A single view centered on the fact_sales_demo_genie table covers both questions. By joining dim_customer_demo_genie we gain the market_segment dimension needed to count orders per segment. Product-level sales are answered directly from the fact table using product_id (partial, since no dim_product is available). All required measures (gross_sales, net_sales, discount, order count, quantity) and dimensions (product_id, customer, segment, date) are included in one unified view.",
+    "consolidation_reasoning": "A single Metric View centered on the fact_sales_demo_genie fact table, joined to all three dimension tables (date, customer, product), covers all 10 business questions. Date dimensions enable year/month sales analysis. Customer dimensions enable per-customer gross sales and discount analysis. Product dimensions enable per-product sales, units, and discount analysis. All key measures (net_sales, gross_sales, discount, quantity, order count) are defined once and reused across every question.",
     "covered_questions": [
-      "Cuáles son las ventas por producto?",
-      "Cuántas órdenes existen por segmento?"
+      "¿Cuáles fueron las ventas netas por año?",
+      "¿Cuál es el top 5 de productos con mayores ventas?",
+      "¿Cuántas unidades se vendieron por producto?",
+      "¿Cuál es el descuento promedio por cliente?",
+      "¿Cuántas órdenes se realizaron en total?",
+      "¿Cuáles son los 10 clientes con mayores ventas brutas?",
+      "¿Cuál es la diferencia entre ventas brutas y ventas netas por año?",
+      "¿Cuántas unidades se vendieron por mes en el último año?",
+      "¿Qué productos tienen un descuento promedio mayor al 10%?",
+      "¿Cuál es el ingreso neto promedio por orden?"
     ],
     "proposed_yaml_config": {
       "version": "1.1",
       "source": "brz_dev.default.fact_sales_demo_genie",
-      "comment": "Vista semántica central de ventas. Cada fila representa una línea de producto dentro de una orden. Permite analizar ventas brutas, netas, descuentos y conteo de órdenes por producto, cliente, segmento de mercado y fecha.",
+      "comment": "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de fecha, cliente y producto para responder preguntas sobre ingresos, descuentos, unidades vendidas y órdenes, segmentados por año, mes, cliente y producto.",
       "joins": [
+        {
+          "name": "dim_date",
+          "source": "brz_dev.default.dim_date_demo_genie",
+          "on": "source.date_id = dim_date.date_id"
+        },
         {
           "name": "dim_customer",
           "source": "brz_dev.default.dim_customer_demo_genie",
           "on": "source.customer_id = dim_customer.customer_id"
+        },
+        {
+          "name": "dim_product",
+          "source": "brz_dev.default.dim_product_demo_genie",
+          "on": "source.product_id = dim_product.product_id"
         }
       ],
       "dimensions": [
         {
-          "name": "Product ID",
-          "expr": "source.product_id",
-          "comment": "Identificador del producto vendido. Úsalo para agrupar ventas por producto.",
+          "name": "Año",
+          "expr": "dim_date.year",
+          "comment": "Año calendario en que se realizó la venta.",
           "synonyms": [
-            "producto",
-            "id producto"
+            "year",
+            "anio"
           ]
         },
         {
-          "name": "Order ID",
-          "expr": "source.order_id",
-          "comment": "Identificador de la orden de venta.",
+          "name": "Mes",
+          "expr": "dim_date.month",
+          "comment": "Número del mes en que se realizó la venta.",
           "synonyms": [
-            "orden",
-            "id orden"
+            "month",
+            "numero de mes"
           ]
         },
         {
-          "name": "Line Number",
-          "expr": "source.line_number",
-          "comment": "Número de línea dentro de la orden.",
+          "name": "Nombre del Mes",
+          "expr": "dim_date.month_name",
+          "comment": "Nombre del mes en que se realizó la venta.",
           "synonyms": [
-            "línea",
-            "línea de orden"
+            "month name",
+            "mes"
           ]
         },
         {
-          "name": "Date",
+          "name": "Fecha",
           "expr": "source.date_id",
-          "comment": "Fecha en la que se realizó la orden.",
+          "comment": "Fecha exacta en que se realizó la orden.",
           "synonyms": [
-            "fecha",
-            "fecha de venta"
+            "date",
+            "fecha de orden"
           ]
         },
         {
-          "name": "Customer ID",
+          "name": "ID Cliente",
           "expr": "source.customer_id",
           "comment": "Identificador único del cliente.",
           "synonyms": [
-            "cliente id",
-            "id cliente"
+            "customer id",
+            "cliente id"
           ]
         },
         {
-          "name": "Customer Name",
+          "name": "Nombre Cliente",
           "expr": "dim_customer.customer_name",
-          "comment": "Nombre completo del cliente.",
+          "comment": "Nombre completo del cliente que realizó la orden.",
           "synonyms": [
-            "nombre cliente",
+            "customer name",
             "cliente"
           ]
         },
         {
-          "name": "Market Segment",
+          "name": "Segmento de Mercado",
           "expr": "dim_customer.market_segment",
-          "comment": "Segmento de mercado al que pertenece el cliente. Úsalo para agrupar órdenes y ventas por segmento.",
+          "comment": "Segmento de mercado al que pertenece el cliente.",
           "synonyms": [
-            "segmento",
-            "segmento de mercado"
+            "market segment",
+            "segmento"
           ]
         },
         {
-          "name": "Nation ID",
-          "expr": "dim_customer.nation_id",
-          "comment": "Identificador de la nación del cliente.",
+          "name": "ID Producto",
+          "expr": "source.product_id",
+          "comment": "Identificador único del producto vendido.",
           "synonyms": [
-            "nación",
-            "país id"
+            "product id",
+            "producto id"
+          ]
+        },
+        {
+          "name": "Nombre Producto",
+          "expr": "dim_product.product_name",
+          "comment": "Nombre descriptivo del producto vendido.",
+          "synonyms": [
+            "product name",
+            "producto"
+          ]
+        },
+        {
+          "name": "Tipo de Producto",
+          "expr": "dim_product.product_type",
+          "comment": "Categoría o tipo del producto.",
+          "synonyms": [
+            "product type",
+            "categoria producto"
+          ]
+        },
+        {
+          "name": "Marca",
+          "expr": "dim_product.brand",
+          "comment": "Marca comercial del producto.",
+          "synonyms": [
+            "brand",
+            "marca producto"
+          ]
+        },
+        {
+          "name": "Fabricante",
+          "expr": "dim_product.manufacturer",
+          "comment": "Fabricante del producto.",
+          "synonyms": [
+            "manufacturer",
+            "proveedor"
+          ]
+        },
+        {
+          "name": "ID Orden",
+          "expr": "source.order_id",
+          "comment": "Identificador de la orden de venta.",
+          "synonyms": [
+            "order id",
+            "orden"
+          ]
+        },
+        {
+          "name": "Número de Línea",
+          "expr": "source.line_number",
+          "comment": "Número de línea dentro de la orden.",
+          "synonyms": [
+            "line number",
+            "linea"
           ]
         }
       ],
       "measures": [
         {
-          "name": "Gross Sales",
-          "expr": "SUM(source.gross_sales)",
-          "comment": "Suma del valor bruto de ventas antes de aplicar descuentos.",
-          "format_type": "currency",
-          "synonyms": [
-            "ventas brutas",
-            "venta bruta"
-          ]
-        },
-        {
-          "name": "Net Sales",
-          "expr": "SUM(source.net_sales)",
+          "name": "Ventas Netas",
+          "expr": "SUM(net_sales)",
           "comment": "Suma del valor neto de ventas después de aplicar descuentos.",
           "format_type": "currency",
           "synonyms": [
-            "ventas netas",
-            "venta neta"
+            "net sales",
+            "ingresos netos"
           ]
         },
         {
-          "name": "Total Discount",
-          "expr": "SUM(source.discount)",
+          "name": "Ventas Brutas",
+          "expr": "SUM(gross_sales)",
+          "comment": "Suma del valor bruto de ventas antes de aplicar descuentos.",
+          "format_type": "currency",
+          "synonyms": [
+            "gross sales",
+            "ingresos brutos"
+          ]
+        },
+        {
+          "name": "Descuento Total",
+          "expr": "SUM(discount)",
           "comment": "Suma total de descuentos aplicados.",
           "format_type": "currency",
           "synonyms": [
-            "descuento total",
+            "total discount",
             "descuentos"
           ]
         },
         {
-          "name": "Total Quantity",
-          "expr": "SUM(source.quantity)",
-          "comment": "Suma total de unidades vendidas.",
-          "format_type": "number",
+          "name": "Descuento Promedio",
+          "expr": "AVG(discount)",
+          "comment": "Descuento promedio aplicado por línea de venta. Útil para analizar el descuento promedio por cliente o producto.",
+          "format_type": "currency",
           "synonyms": [
-            "cantidad total",
-            "unidades vendidas"
+            "average discount",
+            "promedio descuento"
           ]
         },
         {
-          "name": "Number of Orders",
-          "expr": "COUNT(DISTINCT source.order_id)",
-          "comment": "Conteo de órdenes únicas. Úsalo para responder cuántas órdenes existen por segmento u otra dimensión.",
-          "format_type": "number",
+          "name": "Diferencia Bruto vs Neto",
+          "expr": "SUM(gross_sales) - SUM(net_sales)",
+          "comment": "Diferencia entre ventas brutas y ventas netas, equivalente al total de descuentos aplicados.",
+          "format_type": "currency",
           "synonyms": [
-            "órdenes",
-            "total órdenes"
+            "gross net difference",
+            "diferencia ventas"
           ]
         },
         {
-          "name": "Number of Order Lines",
+          "name": "Unidades Vendidas",
+          "expr": "SUM(quantity)",
+          "comment": "Total de unidades vendidas.",
+          "format_type": "number",
+          "synonyms": [
+            "quantity sold",
+            "cantidad vendida"
+          ]
+        },
+        {
+          "name": "Número de Órdenes",
+          "expr": "COUNT(DISTINCT order_id)",
+          "comment": "Cantidad de órdenes únicas realizadas.",
+          "format_type": "number",
+          "synonyms": [
+            "order count",
+            "total ordenes"
+          ]
+        },
+        {
+          "name": "Ingreso Neto Promedio por Orden",
+          "expr": "SUM(net_sales) / COUNT(DISTINCT order_id)",
+          "comment": "Ingreso neto promedio generado por cada orden única.",
+          "format_type": "currency",
+          "synonyms": [
+            "average net revenue per order",
+            "ticket promedio"
+          ]
+        },
+        {
+          "name": "Número de Líneas de Venta",
           "expr": "COUNT(*)",
-          "comment": "Conteo de líneas de orden (filas en la tabla de hechos).",
+          "comment": "Total de líneas de producto en las órdenes de venta.",
           "format_type": "number",
           "synonyms": [
-            "líneas de orden",
-            "registros de venta"
+            "line count",
+            "total lineas"
           ]
         }
       ]
@@ -235,7 +461,15 @@
       "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
     },
     {
+      "table_fqn": "brz_dev.default.dim_date_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
       "table_fqn": "brz_dev.default.fact_sales_demo_genie",
+      "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
+    },
+    {
+      "table_fqn": "brz_dev.default.dim_product_demo_genie",
       "description": "Access granted for: 'josorioos@argos.com.co' (by Owner), '3as_adb_developer' (by Catalog), 'proveedores_argos_experimentality' (by Table), 'proveedores_argos_scitis_group' (by Table), 'datosinformacion' (by Table), 'sg-argos-catalog-admin' (by Table), 'sg-bpt-developers' (by Table), 'rjimenezji@argos.com.co' (by Table), 'jramirezs@argos.com.co' (by Table), 'amezag@argos.com.co' (by Table), 'echapuel@argos.com.co' (by Table), '15c61147-a04e-4ad8-9492-4ab7a720e648' (by Table), 'mpuentesp@argos.com.co' (by Table), 'echapuel59@summa-sci.com' (by Table), 'azureautomatdata@argos.com.co' (by Table), 'aecheverri80@argos.com.co' (by Table)."
     }
   ]
