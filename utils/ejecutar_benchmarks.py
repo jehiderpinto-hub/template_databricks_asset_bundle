@@ -1,28 +1,25 @@
 """Ejecuta benchmarks de Genie vía API y evalúa su umbral de calidad."""
 
 import argparse
-import difflib
 import json
-import re
 from pathlib import Path
 from typing import Any
 
 from comun import read_json_file
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.dashboards import GenieEvalAssessment
 
 
-def normalize_sql(sql: str) -> str:
-    """Normaliza SQL para comparar consultas con diferencias de formato."""
-    return re.sub(r"\s+", " ", sql.strip().lower().replace("`", ""))
-
-
-def sql_similarity(expected_sql: str, actual_sql: str) -> float:
-    """Calcula similitud entre SQL esperado y SQL generado, entre 0 y 1."""
-    return difflib.SequenceMatcher(
-        None,
-        normalize_sql(expected_sql),
-        normalize_sql(actual_sql),
-    ).ratio()
+def _extract_sql_from_eval_response(responses: list[Any] | None) -> str:
+    """Obtiene el SQL ejecutado desde la respuesta de evaluación del Genie."""
+    if not responses:
+        return ""
+    for response in responses:
+        if getattr(response, "response_type", None) and str(response.response_type).upper() == "SQL":
+            sql = getattr(response, "response", "")
+            if sql:
+                return sql
+    return ""
 
 
 def extract_benchmarks(genie_json: Path) -> list[dict[str, Any]]:
@@ -51,36 +48,59 @@ def extract_benchmarks(genie_json: Path) -> list[dict[str, Any]]:
     return extracted
 
 
-def extract_generated_sql(message: Any) -> str:
-    """Obtiene el primer SQL generado desde los attachments de una respuesta."""
-    for attachment in message.attachments or []:
-        if attachment.query:
-            return attachment.query
-    return ""
-
-
 def evaluate_benchmarks(
     genie_space_id: str,
     benchmarks: list[dict[str, Any]],
     profile: str,
+    pass_threshold: float = 0.8,
 ) -> list[dict[str, Any]]:
-    """Ejecuta las preguntas contra Genie y devuelve sus resultados comparados."""
+    """Usa la evaluación oficial del Genie para decidir si cada benchmark fue bueno o malo."""
     client = WorkspaceClient(profile=profile)
+    benchmark_ids = [benchmark["id"] for benchmark in benchmarks if benchmark.get("id")]
+    if not benchmark_ids:
+        raise ValueError("El JSON no contiene identificadores válidos para benchmarks")
+
+    runs = client.genie.genie_list_eval_runs(space_id=genie_space_id, page_size=20).eval_runs or []
+    if runs:
+        latest_run = max(runs, key=lambda item: getattr(item, "created_timestamp", 0) or 0)
+        eval_run_id = latest_run.eval_run_id
+    else:
+        run = client.genie.genie_create_eval_run(
+            space_id=genie_space_id,
+            benchmark_question_ids=benchmark_ids,
+        )
+        eval_run_id = run.eval_run_id
+
+    eval_results = client.genie.genie_list_eval_results(
+        space_id=genie_space_id,
+        eval_run_id=eval_run_id,
+    ).eval_results or []
+    if not eval_results:
+        raise ValueError("No se obtuvieron resultados de evaluación del Genie")
+
+    benchmark_lookup = {benchmark["id"]: benchmark for benchmark in benchmarks if benchmark.get("id")}
     results: list[dict[str, Any]] = []
 
-    for benchmark in benchmarks:
-        message = client.genie.start_conversation_and_wait(
+    for eval_result in eval_results:
+        benchmark_id = eval_result.benchmark_question_id
+        benchmark = benchmark_lookup.get(benchmark_id, {})
+        detail = client.genie.genie_get_eval_result_details(
             space_id=genie_space_id,
-            content=benchmark["question"],
+            eval_run_id=eval_run_id,
+            result_id=eval_result.result_id,
         )
-        actual_sql = extract_generated_sql(message)
-        score = sql_similarity(benchmark["expected_sql"], actual_sql)
+        assessment = getattr(detail, "assessment", None)
+        passed = assessment == GenieEvalAssessment.GOOD
+        actual_sql = _extract_sql_from_eval_response(getattr(detail, "actual_response", None))
+        score = 1.0 if passed else 0.0
         results.append(
             {
-                **benchmark,
+                "id": benchmark_id,
+                "question": benchmark.get("question") or getattr(eval_result, "question", ""),
+                "expected_sql": benchmark.get("expected_sql") or getattr(eval_result, "benchmark_answer", ""),
                 "actual_sql": actual_sql,
                 "score": round(score, 4),
-                "passed": bool(actual_sql),
+                "passed": passed,
             }
         )
 
@@ -88,18 +108,23 @@ def evaluate_benchmarks(
 
 
 def write_report(results: list[dict[str, Any]], output_file: Path) -> float:
-    """Guarda el reporte de benchmarks y devuelve el promedio de similitud."""
-    average_score = sum(result["score"] for result in results) / len(results)
+    """Guarda el reporte de benchmarks y devuelve el porcentaje de éxitos."""
+    if not results:
+        raise ValueError("No hay resultados de benchmark para escribir")
+
+    passed_count = sum(1 for result in results if result["passed"])
+    pass_rate = passed_count / len(results)
     report = {
-        "average_score": round(average_score, 4),
+        "average_score": round(pass_rate, 4),
         "benchmarks_total": len(results),
+        "passed_benchmarks": passed_count,
         "results": results,
     }
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open("w", encoding="utf-8") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)
         file.write("\n")
-    return average_score
+    return pass_rate
 
 
 def main() -> None:
@@ -130,7 +155,12 @@ def main() -> None:
     if not benchmarks:
         raise ValueError("El JSON no contiene benchmarks SQL ejecutables")
 
-    results = evaluate_benchmarks(args.genie_space_id, benchmarks, args.profile)
+    results = evaluate_benchmarks(
+        args.genie_space_id,
+        benchmarks,
+        args.profile,
+        pass_threshold=args.threshold,
+    )
     average_score = write_report(results, args.report)
     print(f"Benchmark score: {average_score:.4f} / threshold: {args.threshold:.4f}")
 

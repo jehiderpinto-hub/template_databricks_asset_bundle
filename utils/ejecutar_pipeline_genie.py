@@ -2,13 +2,15 @@
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
 
 import yaml
 from comun import run_subprocess
-from crear_genie_desde_entradas import build_config, create_files
+from crear_genie_desde_entradas import create_files
+from leer_estructura_genie import build_config as build_imported_genie_config
 from leer_estructura_genie import write_config
 from transaccion_proyecto import LocalProjectTransaction
 
@@ -72,6 +74,19 @@ class PipelineConsole:
 
 
 CONSOLE = PipelineConsole()
+
+
+def build_metric_view_name(genie_json: Path) -> str:
+    """Genera un nombre de Metric View único y específico para cada Genie."""
+    name = genie_json.stem
+    if name.endswith(".geniespace"):
+        name = name[: -len(".geniespace")]
+    sanitized = re.sub(r"[^A-Za-z0-9_]", "_", name).strip("_").lower()
+    if not sanitized:
+        sanitized = "genie_assessment"
+    if not sanitized.startswith("mv_"):
+        sanitized = f"mv_{sanitized}"
+    return sanitized
 
 
 def run_command(command: list[str], description: str) -> None:
@@ -235,6 +250,27 @@ def generate_config(yaml_file: Path, json_file: Path) -> None:
     )
 
 
+def generate_config_from_import(
+    yaml_file: Path,
+    json_file: Path,
+    pipeline_config: dict,
+) -> None:
+    """Crea el config declarativo usando las fuentes y warehouse importados."""
+    with yaml_file.open(encoding="utf-8") as file:
+        yaml_structure = yaml.safe_load(file) or {}
+    with json_file.open(encoding="utf-8") as file:
+        json_structure = json.load(file)
+
+    config = build_imported_genie_config(
+        yaml_structure,
+        json_structure,
+        get_config_questions(pipeline_config),
+    )
+    if not config["warehouse_id"]:
+        raise ValueError("El YAML importado no define warehouse_id")
+    write_config(config)
+
+
 def create_manual_genie_space(
     title: str,
     warehouse_id: str,
@@ -315,6 +351,7 @@ def refactor_genie(json_file: Path, profile: str) -> None:
     )
     with config_file.open(encoding="utf-8") as file:
         config = json.load(file)
+    metric_view_name = build_metric_view_name(json_file)
     run_command(
         [
             sys.executable,
@@ -326,7 +363,7 @@ def refactor_genie(json_file: Path, profile: str) -> None:
             "--warehouse-id",
             config["warehouse_id"],
             "--metric-view-name",
-            "mv_genie_assessment",
+            metric_view_name,
             "--profile",
             profile,
         ],
@@ -352,8 +389,8 @@ def run_benchmarks(
     json_file: Path,
     profile: str,
     threshold: float,
-) -> None:
-    """Ejecuta benchmarks y detiene el pipeline si no alcanza el umbral."""
+) -> bool:
+    """Ejecuta benchmarks y devuelve si el Genie supera el umbral."""
     command = [
         sys.executable,
         "utils/ejecutar_benchmarks.py",
@@ -372,9 +409,15 @@ def run_benchmarks(
         print(result.stdout)
     if result.stderr:
         print(result.stderr)
-    if result.returncode != 0:
-        raise RuntimeError("El umbral de benchmarks no fue alcanzado; deploy cancelado")
-    CONSOLE.success(f"Umbral de calidad alcanzado ({threshold:.2%})")
+    if result.returncode == 0:
+        CONSOLE.success(f"Umbral de calidad alcanzado ({threshold:.2%})")
+        return True
+    if result.returncode == 2:
+        CONSOLE.skipped(
+            f"Benchmarks no superan el umbral requerido ({threshold:.2%}); deploy cancelado."
+        )
+        return False
+    raise RuntimeError(f"Error ejecutando benchmarks: código {result.returncode}")
 
 
 def deploy_bundle(target: str, profile: str) -> None:
@@ -400,14 +443,12 @@ def main() -> None:
             )
             if pipeline_config:
                 CONSOLE.stage("Generando config.json desde configuracion declarativa")
-                write_config(
-                    build_config(
-                        get_config_sources(pipeline_config),
-                        get_config_questions(pipeline_config),
-                        pipeline_config.get("warehouse_id", args.warehouse_id),
-                    )
+                generate_config_from_import(
+                    yaml_file,
+                    json_file,
+                    pipeline_config,
                 )
-                CONSOLE.success("Configuracion local creada")
+                CONSOLE.success("Configuracion local creada con el warehouse importado")
             else:
                 generate_config(yaml_file, json_file)
         else:
@@ -434,20 +475,27 @@ def main() -> None:
             if should_refactor:
                 refactor_genie(json_file, args.profile)
 
-            if args.existing_id:
-                run_benchmarks(
-                    args.existing_id,
-                    json_file,
-                    args.profile,
-                    args.benchmark_threshold,
-                )
-            else:
-                CONSOLE.skipped("Benchmarks API: no aplican para un Genie nuevo.")
-
         else:
             CONSOLE.skipped("Validacion, assessment, recuperacion y refactorizacion.")
 
-        deploy_bundle(args.target, args.profile)
+        if args.existing_id:
+            benchmark_passed = run_benchmarks(
+                args.existing_id,
+                json_file,
+                args.profile,
+                args.benchmark_threshold,
+            )
+            if not benchmark_passed:
+                CONSOLE.skipped(
+                    "Deploy cancelado porque el Genie existente no supera el umbral de benchmarks."
+                )
+            else:
+                deploy_bundle(args.target, args.profile)
+        else:
+            deploy_bundle(args.target, args.profile)
+            CONSOLE.skipped(
+                "Benchmark post-deploy: sin bloqueo de deploy para Genie nuevo; revisar la alerta manualmente."
+            )
 
     CONSOLE.completed()
 

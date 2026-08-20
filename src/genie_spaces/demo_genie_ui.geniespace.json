@@ -1,0 +1,355 @@
+{
+  "benchmarks": {
+    "questions": [
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT\n",
+              "  d.year,\n",
+              "  COUNT(DISTINCT f.order_id) AS total_ordenes\n",
+              "FROM brz_dev.default.fact_sales_demo_genie f\n",
+              "JOIN brz_dev.default.dim_date_demo_genie d\n",
+              "  ON f.date_id = d.date_id\n",
+              "GROUP BY d.year\n",
+              "ORDER BY d.year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "evaluation_note": [
+          "Debe usar COUNT(DISTINCT order_id) para contar órdenes (no COUNT(*)), agrupando por año desde dim_date."
+        ],
+        "id": "01f19c15237917a38b4ac90e4fc2e300",
+        "question": [
+          "¿Cuántas órdenes se realizaron por año?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT p.product_name, SUM(f.net_sales) AS ventas\n",
+              "FROM brz_dev.default.fact_sales_demo_genie f\n",
+              "JOIN brz_dev.default.dim_product_demo_genie p ON f.product_id = p.product_id\n",
+              "WHERE p.product_type LIKE '%SMALL%'\n",
+              "GROUP BY p.product_name\n",
+              "ORDER BY ventas DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "01f19b5e9b0f19c1a78d0cae1b2b0b6c",
+        "question": [
+          "¿Cuáles son las ventas de productos tipo SMALL?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "column_configs": [
+          {
+            "column_name": "customer_id",
+            "description": [
+              "Llave primaria del cliente. Identificador único del cliente (manual)."
+            ],
+            "enable_format_assistance": true,
+            "synonyms": [
+              "cliente",
+              "id_cliente"
+            ]
+          },
+          {
+            "column_name": "customer_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "market_segment",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "nation_id",
+            "enable_format_assistance": true
+          }
+        ],
+        "description": [
+          "Dimensión de clientes. Contiene la información comercial y de identificación de cada cliente. (manual)"
+        ],
+        "identifier": "brz_dev.default.dim_customer_demo_genie"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "date_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "year",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "brz_dev.default.dim_date_demo_genie"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "brand",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "manufacturer",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "product_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "product_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "product_size",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "product_type",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "brz_dev.default.dim_product_demo_genie"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "customer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "date_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "discount",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "gross_sales",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "line_number",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "net_sales",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "order_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "product_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "quantity",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "brz_dev.default.fact_sales_demo_genie"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "Cantidad Vendida"
+          },
+          {
+            "column_name": "Número de Órdenes"
+          },
+          {
+            "column_name": "Producto",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Ventas Netas"
+          }
+        ],
+        "identifier": "brz_dev.default.mv_sales_demo_genie"
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "01f197ec8b891cbb93906e1ca04546be",
+        "parameters": [
+          {
+            "default_value": {
+              "values": [
+                "1997"
+              ]
+            },
+            "name": "year",
+            "type_hint": "STRING"
+          }
+        ],
+        "question": [
+          "¿Cuáles fueron las ventas por año?"
+        ],
+        "sql": [
+          " SELECT\r\n",
+          "    d.year,\r\n",
+          "    SUM(f.net_sales) AS total_sales\r\n",
+          "FROM  brz_dev.default.fact_sales_demo_genie f\r\n",
+          "JOIN brz_dev.default.dim_date_demo_genie d\r\n",
+          "    ON f.date_id = d.date_id\r\n",
+          "WHERE d.year = :year\r\n",
+          "GROUP BY d.year\r\n",
+          "ORDER BY d.year;"
+        ],
+        "usage_guidance": [
+          "aplicar este parámetro cuando se necesite agrupar las ventas de un año especifico. si no se especifica el default es 1997"
+        ]
+      }
+    ],
+    "join_specs": [
+      {
+        "id": "01f197eada601a5e85e44c809a185032",
+        "instruction": [
+          "Relaciona cada línea de venta con el cliente que realizó la orden.\n",
+          "La relación es muchos a uno desde fact_sales_demo_genie hacia dim_customer_demo_genie."
+        ],
+        "left": {
+          "alias": "fact_sales_demo_genie",
+          "identifier": "brz_dev.default.fact_sales_demo_genie"
+        },
+        "right": {
+          "alias": "dim_customer_demo_genie",
+          "identifier": "brz_dev.default.dim_customer_demo_genie"
+        },
+        "sql": [
+          "`fact_sales_demo_genie`.`customer_id` = `dim_customer_demo_genie`.`customer_id`",
+          "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+        ]
+      }
+    ],
+    "sql_functions": [
+      {
+        "id": "01f19b5b0acb161f928d52ed2227d492",
+        "identifier": "brz_dev.default.fn_sales_by_product"
+      }
+    ],
+    "sql_snippets": {
+      "expressions": [
+        {
+          "display_name": "campo_test",
+          "id": "01f19b5e612f1154b476b35746d36433",
+          "instruction": [
+            "cuando se consulte por agrupaciones diariamente devolver por este id si no se especifica que se agrupe por el campo date_id"
+          ],
+          "sql": [
+            "CAST(DATE_FORMAT(brz_dev.default.dim_date_demo_genie.date_id, 'yyyyMMdd') AS INT)"
+          ],
+          "synonyms": [
+            "dia_id",
+            "fecha_id"
+          ]
+        }
+      ],
+      "filters": [
+        {
+          "display_name": "filtro_test",
+          "id": "01f19b5c362a138eb8347e59587224ad",
+          "instruction": [
+            "Cada vez que se filtre por el tipo de producto y se necesite categorizar y agrupar por productos pequeños se usa este filtro"
+          ],
+          "sql": [
+            "brz_dev.default.dim_product_demo_genie.product_type like '%SMALL%'"
+          ],
+          "synonyms": [
+            "tipo pequeño",
+            "producto pequeño",
+            "producto economico"
+          ]
+        }
+      ],
+      "measures": [
+        {
+          "display_name": "Ventas brutas",
+          "id": "01f197ebf5931873be1f5261c07b9c5a",
+          "instruction": [
+            "Valor total de las ventas antes de aplicar descuentos."
+          ],
+          "sql": [
+            "SUM(fact_sales_demo_genie.gross_sales)"
+          ],
+          "synonyms": [
+            "ventas totales",
+            "total de ventas"
+          ]
+        }
+      ]
+    },
+    "text_instructions": [
+      {
+        "content": [
+          "Este Genie Space analiza información de ventas basada en un modelo dimensional.\r\n",
+          "\r\n",
+          "MODELO DE DATOS:\r\n",
+          "- fact_sales es la tabla de hechos y tiene una fila por línea de producto dentro de una orden.\r\n",
+          "- dim_customer contiene la información de los clientes.\r\n",
+          "- dim_product contiene la información de los productos.\r\n",
+          "- dim_date contiene la información calendario.\r\n",
+          "\r\n",
+          "RELACIONES:\r\n",
+          "- fact_sales.customer_id se relaciona con dim_customer.customer_id.\r\n",
+          "- fact_sales.product_id se relaciona con dim_product.product_id.\r\n",
+          "- fact_sales.date_id se relaciona con dim_date.date_id.\r\n",
+          "\r\n",
+          "MÉTRICAS DE NEGOCIO:\r\n",
+          "- Ventas brutas: suma de gross_sales.\r\n",
+          "- Ventas netas: suma de net_sales.\r\n",
+          "- Unidades vendidas: suma de quantity.\r\n",
+          "- Descuento promedio: promedio de discount.\r\n",
+          "\r\n",
+          "REGLAS:\r\n",
+          "- Cuando el usuario diga \"ventas\", interpretar el término como ventas netas, salvo que indique explícitamente \"ventas brutas\".\r\n",
+          "- Cuando el usuario diga \"unidades vendidas\", utilizar SUM(quantity).\r\n",
+          "- Para análisis temporal utilizar dim_date.\r\n",
+          "- Para análisis por cliente utilizar dim_customer.\r\n",
+          "- Para análisis por producto utilizar dim_product.\r\n",
+          "- No contar filas de fact_sales como número de órdenes.\r\n",
+          "- Para contar órdenes utilizar COUNT(DISTINCT order_id).\r\n",
+          "- Para calcular ventas netas utilizar net_sales.\r\n",
+          "- No sumar order_id, customer_id, product_id ni date_id.\r\n",
+          "- Mantener la granularidad de fact_sales como línea de orden.\r\n",
+          "- Cuando sea necesario combinar información de diferentes dimensiones, utilizar las relaciones definidas entre fact_sales y las dimensiones.\r\n",
+          "- Los resultados monetarios deben presentarse con dos decimales.\r\n",
+          "- Las ventas deben ordenarse de mayor a menor cuando el usuario solicite los productos, clientes o segmentos con mayores ventas."
+        ],
+        "id": "01f19690f3ac164da452ff3acf101ad6"
+      }
+    ]
+  },
+  "version": 2
+}

@@ -2,11 +2,31 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
 from comun import read_yaml_file
+
+
+def build_metric_view_name(genie_json: Path | str | None) -> str:
+    """Genera un nombre estable y único basado en el Genie asociado."""
+    base_name = "genie_assessment"
+    if genie_json is not None:
+        path = Path(genie_json)
+        name = path.stem
+        if name.endswith(".geniespace"):
+            name = name[: -len(".geniespace")]
+        if name:
+            base_name = name
+
+    sanitized = re.sub(r"[^A-Za-z0-9_]", "_", base_name).strip("_").lower()
+    if not sanitized:
+        sanitized = "genie_assessment"
+    if not sanitized.startswith("mv_"):
+        sanitized = f"mv_{sanitized}"
+    return sanitized
 
 
 def create_metric_view(
@@ -75,13 +95,14 @@ def main() -> None:
     parser.add_argument("--metric-view-yaml", type=Path, required=True)
     parser.add_argument("--genie-json", type=Path, required=True)
     parser.add_argument("--warehouse-id", required=True)
-    parser.add_argument("--metric-view-name", default="mv_genie_assessment")
+    parser.add_argument("--metric-view-name")
     parser.add_argument("--profile", default="dev")
     args = parser.parse_args()
 
+    metric_view_name = args.metric_view_name or build_metric_view_name(args.genie_json)
     identifier = create_metric_view(
         args.metric_view_yaml,
-        args.metric_view_name,
+        metric_view_name,
         args.warehouse_id,
         args.profile,
     )
