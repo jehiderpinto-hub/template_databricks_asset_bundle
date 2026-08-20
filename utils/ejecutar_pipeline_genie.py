@@ -6,6 +6,8 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Any
+from uuid import uuid4
 
 import yaml
 from comun import run_subprocess
@@ -145,7 +147,7 @@ def parse_arguments() -> argparse.Namespace:
         "--benchmark-threshold",
         type=float,
         default=0.8,
-        help="Similitud SQL promedio mínima para permitir el deploy (0 a 1).",
+        help="Porcentaje mínimo de benchmarks buenos para permitir el deploy (0 a 1).",
     )
     parser.add_argument(
         "--warehouse-id",
@@ -201,6 +203,275 @@ def get_config_sources(config: dict) -> list[str]:
     if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
         raise ValueError("sources debe ser una lista de textos")
     return sources
+
+
+def get_config_benchmarks(config: dict | None) -> list[dict[str, str]]:
+    """Valida y devuelve benchmarks declarados en el YAML de pipeline."""
+    if not config:
+        return []
+
+    raw_benchmarks = config.get("benchmarks", [])
+    if raw_benchmarks is None:
+        return []
+
+    benchmark_items: list[dict[str, Any]] = []
+    if isinstance(raw_benchmarks, list):
+        benchmark_items = raw_benchmarks
+    elif isinstance(raw_benchmarks, dict):
+        questions = raw_benchmarks.get("questions", [])
+        if not isinstance(questions, list):
+            raise ValueError("benchmarks.questions debe ser una lista")
+        benchmark_items = questions
+    else:
+        raise ValueError("benchmarks debe ser una lista o un objeto con questions")
+
+    normalized: list[dict[str, str]] = []
+    for index, item in enumerate(benchmark_items):
+        if not isinstance(item, dict):
+            raise ValueError(f"benchmarks[{index}] debe ser un objeto")
+
+        raw_question = item.get("question")
+        if isinstance(raw_question, list):
+            question = raw_question[0] if raw_question else ""
+        else:
+            question = raw_question
+
+        expected_sql = item.get("expected_sql") or item.get("sql") or item.get("answer_sql")
+        if not expected_sql:
+            answer_items = item.get("answer", [])
+            if isinstance(answer_items, list):
+                for answer in answer_items:
+                    if not isinstance(answer, dict):
+                        continue
+                    if answer.get("format") != "SQL":
+                        continue
+                    content = answer.get("content", [])
+                    if isinstance(content, list):
+                        expected_sql = "".join(content)
+                    elif isinstance(content, str):
+                        expected_sql = content
+                    if expected_sql:
+                        break
+
+        evaluation_note = item.get("evaluation_note")
+        benchmark_id = item.get("id")
+
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError(f"benchmarks[{index}].question debe ser texto no vacío")
+        if not isinstance(expected_sql, str) or not expected_sql.strip():
+            raise ValueError(
+                f"benchmarks[{index}] debe incluir expected_sql (o sql/answer_sql) no vacío"
+            )
+        if evaluation_note is not None and (
+            not isinstance(evaluation_note, str) or not evaluation_note.strip()
+        ):
+            raise ValueError(f"benchmarks[{index}].evaluation_note debe ser texto no vacío")
+
+        benchmark: dict[str, str] = {
+            "question": question.strip(),
+            "expected_sql": expected_sql.strip(),
+        }
+        if isinstance(benchmark_id, str) and _is_valid_benchmark_id(benchmark_id.strip()):
+            benchmark["id"] = benchmark_id.strip()
+        if evaluation_note:
+            if isinstance(evaluation_note, list):
+                note_text = str(evaluation_note[0]).strip() if evaluation_note else ""
+            else:
+                note_text = str(evaluation_note).strip()
+            if note_text:
+                benchmark["evaluation_note"] = note_text
+        normalized.append(benchmark)
+
+    return normalized
+
+
+def _normalize_sql_text(sql_text: str) -> str:
+    return re.sub(r"\s+", " ", sql_text.strip()).lower()
+
+
+def _is_valid_benchmark_id(value: str) -> bool:
+    return bool(re.fullmatch(r"[0-9a-f]{32}", value))
+
+
+def _extract_benchmark_entry_fields(entry: dict[str, Any]) -> tuple[str, str]:
+    question_values = entry.get("question", [])
+    answer_values = entry.get("answer", [])
+    question = question_values[0].strip() if question_values else ""
+    expected_sql = ""
+    for answer in answer_values:
+        if answer.get("format") == "SQL":
+            expected_sql = "".join(answer.get("content", [])).strip()
+            if expected_sql:
+                break
+    return question, expected_sql
+
+
+def _generate_benchmark_id() -> str:
+    return uuid4().hex
+
+
+def _merge_json_values(base_value: Any, override_value: Any) -> Any:
+    """Hace merge recursivo: dict recursivo, listas por anexado, escalares reemplazo."""
+    if isinstance(base_value, dict) and isinstance(override_value, dict):
+        merged = dict(base_value)
+        for key, value in override_value.items():
+            if key in merged:
+                merged[key] = _merge_json_values(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
+    if isinstance(base_value, list) and isinstance(override_value, list):
+        return [*base_value, *override_value]
+    return override_value
+
+
+def merge_benchmarks_into_genie_json(
+    json_file: Path,
+    pipeline_config: dict | None,
+    configured_benchmarks: list[dict[str, str]],
+    require_configured: bool,
+) -> tuple[int, int]:
+    """Combina benchmarks del JSON con los del config y persiste el resultado."""
+    if require_configured and not configured_benchmarks:
+        raise ValueError(
+            "Para Genies nuevos es obligatorio especificar benchmarks en pipeline_config.yml"
+        )
+
+    with json_file.open(encoding="utf-8") as file:
+        genie_space = json.load(file)
+
+    if pipeline_config:
+        for key in ("version", "data_sources", "instructions"):
+            if key in pipeline_config and pipeline_config[key] is not None:
+                if key in genie_space:
+                    genie_space[key] = _merge_json_values(
+                        genie_space[key],
+                        pipeline_config[key],
+                    )
+                else:
+                    genie_space[key] = pipeline_config[key]
+
+    benchmark_container = genie_space.setdefault("benchmarks", {})
+    benchmark_questions = benchmark_container.setdefault("questions", [])
+    if not isinstance(benchmark_questions, list):
+        raise ValueError("benchmarks.questions debe ser una lista en el JSON del Genie")
+
+    existing_signatures: set[tuple[str, str]] = set()
+    for question_entry in benchmark_questions:
+        if not isinstance(question_entry, dict):
+            continue
+        existing_id = str(question_entry.get("id", "")).strip()
+        if not _is_valid_benchmark_id(existing_id):
+            question_entry["id"] = _generate_benchmark_id()
+        question, expected_sql = _extract_benchmark_entry_fields(question_entry)
+        if question and expected_sql:
+            existing_signatures.add(
+                (question.strip().lower(), _normalize_sql_text(expected_sql))
+            )
+
+    added_count = 0
+    for benchmark in configured_benchmarks:
+        signature = (
+            benchmark["question"].strip().lower(),
+            _normalize_sql_text(benchmark["expected_sql"]),
+        )
+        if signature in existing_signatures:
+            continue
+
+        new_entry: dict[str, Any] = {
+            "id": benchmark.get("id") or _generate_benchmark_id(),
+            "question": [benchmark["question"]],
+            "answer": [
+                {
+                    "format": "SQL",
+                    "content": [benchmark["expected_sql"]],
+                }
+            ],
+        }
+        if "evaluation_note" in benchmark:
+            new_entry["evaluation_note"] = [benchmark["evaluation_note"]]
+
+        benchmark_questions.append(new_entry)
+        existing_signatures.add(signature)
+        added_count += 1
+
+    if not benchmark_questions:
+        raise ValueError("El Genie no contiene benchmarks para evaluar")
+
+    with json_file.open("w", encoding="utf-8") as file:
+        json.dump(genie_space, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+
+    return len(benchmark_questions), added_count
+
+
+def resolve_run_validation(config: dict | None, use_interactive_prompt: bool) -> bool:
+    """Resuelve la bandera de validación soportando run_validate y run_validation."""
+    if config:
+        if "run_validate" in config:
+            return bool(config.get("run_validate"))
+        return bool(config.get("run_validation", True))
+    if use_interactive_prompt:
+        return ask_yes_no("¿Deseas ejecutar la validación del Job?")
+    return True
+
+
+def resolve_refactor(
+    config: dict | None,
+    should_validate: bool,
+    use_interactive_prompt: bool,
+) -> bool:
+    """Resuelve si debe refactorizarse; si no hay validación, fuerza False."""
+    if not should_validate:
+        return False
+    if config:
+        return bool(config.get("refactor", True))
+    if use_interactive_prompt:
+        return ask_yes_no("¿Deseas refactorizar el Genie usando la propuesta recuperada?")
+    return True
+
+
+def resolve_deployed_genie_space_id(resource_name: str, target: str, profile: str) -> str:
+    """Obtiene el ID del Genie desplegado desde el resumen JSON del bundle."""
+    command = [
+        "databricks",
+        "-o",
+        "json",
+        "bundle",
+        "summary",
+        "--target",
+        target,
+        "--profile",
+        profile,
+    ]
+    CONSOLE.stage("Resolviendo ID del Genie desplegado", command)
+    result = run_subprocess(command, PROJECT_ROOT, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"No se pudo obtener bundle summary para resolver el Genie desplegado: {result.stderr}"
+        )
+    try:
+        summary = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("La salida de bundle summary no es JSON válido") from error
+
+    genie_spaces = summary.get("resources", {}).get("genie_spaces", {})
+    if not isinstance(genie_spaces, dict):
+        raise RuntimeError("No se encontró resources.genie_spaces en bundle summary")
+
+    candidate = genie_spaces.get(resource_name)
+    if candidate and candidate.get("id"):
+        CONSOLE.success(f"ID resuelto: {candidate['id']}")
+        return str(candidate["id"])
+
+    for name, resource in genie_spaces.items():
+        if name == resource_name and resource.get("id"):
+            CONSOLE.success(f"ID resuelto: {resource['id']}")
+            return str(resource["id"])
+
+    raise RuntimeError(
+        f"No se encontró el recurso Genie '{resource_name}' con ID en bundle summary"
+    )
 
 
 def ask_yes_no(question: str) -> bool:
@@ -389,6 +660,7 @@ def run_benchmarks(
     json_file: Path,
     profile: str,
     threshold: float,
+    block_deploy: bool,
 ) -> bool:
     """Ejecuta benchmarks y devuelve si el Genie supera el umbral."""
     command = [
@@ -413,9 +685,14 @@ def run_benchmarks(
         CONSOLE.success(f"Umbral de calidad alcanzado ({threshold:.2%})")
         return True
     if result.returncode == 2:
-        CONSOLE.skipped(
-            f"Benchmarks no superan el umbral requerido ({threshold:.2%}); deploy cancelado."
-        )
+        if block_deploy:
+            CONSOLE.skipped(
+                f"Benchmarks no superan el umbral requerido ({threshold:.2%}); deploy cancelado."
+            )
+        else:
+            print(
+                f"\n[WARNING] Benchmarks no superan el umbral requerido ({threshold:.2%})."
+            )
         return False
     raise RuntimeError(f"Error ejecutando benchmarks: código {result.returncode}")
 
@@ -431,7 +708,7 @@ def deploy_bundle(target: str, profile: str) -> None:
 def main() -> None:
     """Ejecuta el flujo y conserva las definiciones solo tras un deploy exitoso."""
     args = parse_arguments()
-    pipeline_config = None
+    pipeline_config: dict | None = None
     if args.config:
         pipeline_config = load_pipeline_config(args.config)
         apply_pipeline_config(args, pipeline_config)
@@ -458,25 +735,38 @@ def main() -> None:
                 pipeline_config,
             )
 
-        should_validate = (
-            bool(pipeline_config.get("run_validation", True))
-            if pipeline_config
-            else (True if not args.existing_id else ask_yes_no("¿Deseas ejecutar la validación del Job?"))
+        configured_benchmarks = get_config_benchmarks(pipeline_config)
+        CONSOLE.stage("Preparando benchmarks del Genie")
+        total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
+            json_file,
+            pipeline_config,
+            configured_benchmarks,
+            require_configured=not bool(args.existing_id),
         )
+        CONSOLE.success(
+            f"Benchmarks disponibles: {total_benchmarks} (agregados desde config: {added_benchmarks})"
+        )
+
+        should_validate = resolve_run_validation(
+            pipeline_config,
+            use_interactive_prompt=bool(args.existing_id),
+        )
+        should_refactor = resolve_refactor(
+            pipeline_config,
+            should_validate=should_validate,
+            use_interactive_prompt=bool(args.existing_id),
+        )
+
         if should_validate:
             validate_and_run_job(args.target, args.profile)
             retrieve_assessment_outputs(args.profile)
-
-            should_refactor = (
-                bool(pipeline_config.get("refactor", True))
-                if pipeline_config
-                else (True if not args.existing_id else ask_yes_no("¿Deseas refactorizar el Genie usando la propuesta recuperada?"))
-            )
             if should_refactor:
                 refactor_genie(json_file, args.profile)
+            else:
+                CONSOLE.skipped("Refactorización omitida por configuración (refactor=false).")
 
         else:
-            CONSOLE.skipped("Validacion, assessment, recuperacion y refactorizacion.")
+            CONSOLE.skipped("Validación, assessment, recuperación y refactorización.")
 
         if args.existing_id:
             benchmark_passed = run_benchmarks(
@@ -484,6 +774,7 @@ def main() -> None:
                 json_file,
                 args.profile,
                 args.benchmark_threshold,
+                True,
             )
             if not benchmark_passed:
                 CONSOLE.skipped(
@@ -493,9 +784,20 @@ def main() -> None:
                 deploy_bundle(args.target, args.profile)
         else:
             deploy_bundle(args.target, args.profile)
-            CONSOLE.skipped(
-                "Benchmark post-deploy: sin bloqueo de deploy para Genie nuevo; revisar la alerta manualmente."
+            deployed_space_id = resolve_deployed_genie_space_id(
+                args.title,
+                args.target,
+                args.profile,
             )
+            benchmark_passed = run_benchmarks(
+                deployed_space_id,
+                json_file,
+                args.profile,
+                args.benchmark_threshold,
+                False,
+            )
+            if not benchmark_passed:
+                print("[WARNING] El Genie nuevo fue desplegado sin superar el umbral.")
 
     CONSOLE.completed()
 
@@ -503,6 +805,6 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (FileNotFoundError, RuntimeError) as error:
+    except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError, yaml.YAMLError) as error:
         print(f"\n[ERROR] Pipeline detenido: {error}", file=sys.stderr)
         raise SystemExit(1) from error

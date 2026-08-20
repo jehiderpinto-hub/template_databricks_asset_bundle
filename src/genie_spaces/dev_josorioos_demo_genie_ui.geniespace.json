@@ -43,6 +43,20 @@
         "question": [
           "¿Cuáles son las ventas de productos tipo SMALL?"
         ]
+      },
+      {
+        "id": "a18e654d51794663bae90f6af9cd51ff",
+        "question": [
+          "Total órdenes por año (benchmark agregado)"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT\n  d.year,\n  COUNT(DISTINCT f.order_id) AS total_ordenes\nFROM brz_dev.default.fact_sales_demo_genie f\nJOIN brz_dev.default.dim_date_demo_genie d\n  ON f.date_id = d.date_id\nGROUP BY d.year\nORDER BY d.year"
+            ]
+          }
+        ]
       }
     ]
   },
@@ -194,7 +208,7 @@
             "column_name": "Ventas Netas"
           }
         ],
-        "identifier": "brz_dev.default.mv_dev_josorioos_demo_genie_ui"
+        "identifier": "brz_dev.default.mv_sales_demo_genie"
       }
     ]
   },
