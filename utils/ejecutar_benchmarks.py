@@ -2,12 +2,13 @@
 
 import argparse
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 from comun import read_json_file
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.dashboards import GenieEvalAssessment
+from databricks.sdk.service.dashboards import EvaluationStatusType, GenieEvalAssessment
 
 
 def _extract_sql_from_eval_response(responses: list[Any] | None) -> str:
@@ -52,7 +53,6 @@ def evaluate_benchmarks(
     genie_space_id: str,
     benchmarks: list[dict[str, Any]],
     profile: str,
-    pass_threshold: float = 0.8,
 ) -> list[dict[str, Any]]:
     """Usa la evaluación oficial del Genie para decidir si cada benchmark fue bueno o malo."""
     client = WorkspaceClient(profile=profile)
@@ -60,16 +60,33 @@ def evaluate_benchmarks(
     if not benchmark_ids:
         raise ValueError("El JSON no contiene identificadores válidos para benchmarks")
 
-    runs = client.genie.genie_list_eval_runs(space_id=genie_space_id, page_size=20).eval_runs or []
-    if runs:
-        latest_run = max(runs, key=lambda item: getattr(item, "created_timestamp", 0) or 0)
-        eval_run_id = latest_run.eval_run_id
-    else:
-        run = client.genie.genie_create_eval_run(
+    run = client.genie.genie_create_eval_run(
+        space_id=genie_space_id,
+        benchmark_question_ids=benchmark_ids,
+    )
+    eval_run_id = run.eval_run_id
+
+    timeout_seconds = 600
+    polling_interval_seconds = 5
+    deadline = time.time() + timeout_seconds
+    run_status = run
+    while time.time() < deadline:
+        run_status = client.genie.genie_get_eval_run(
             space_id=genie_space_id,
-            benchmark_question_ids=benchmark_ids,
+            eval_run_id=eval_run_id,
         )
-        eval_run_id = run.eval_run_id
+        status = run_status.eval_run_status
+        if status == EvaluationStatusType.DONE:
+            break
+        if status in {
+            EvaluationStatusType.EVALUATION_CANCELLED,
+            EvaluationStatusType.EVALUATION_FAILED,
+            EvaluationStatusType.EVALUATION_TIMEOUT,
+        }:
+            raise RuntimeError(f"La evaluación del Genie terminó con estado {status.value}")
+        time.sleep(polling_interval_seconds)
+    else:
+        raise RuntimeError("La evaluación del Genie no terminó a tiempo")
 
     eval_results = client.genie.genie_list_eval_results(
         space_id=genie_space_id,
@@ -159,7 +176,6 @@ def main() -> None:
         args.genie_space_id,
         benchmarks,
         args.profile,
-        pass_threshold=args.threshold,
     )
     average_score = write_report(results, args.report)
     print(f"Benchmark score: {average_score:.4f} / threshold: {args.threshold:.4f}")
