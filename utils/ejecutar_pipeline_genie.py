@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -22,12 +23,65 @@ MANAGED_DIRECTORIES = [
 ]
 
 
+class PipelineConsole:
+    """Presenta el avance del pipeline de forma consistente en consola."""
+
+    width = 76
+
+    def __init__(self) -> None:
+        self.step_number = 0
+        self.started_at = time.perf_counter()
+
+    def line(self, character: str = "=") -> None:
+        print(character * self.width)
+
+    def start(self, args: argparse.Namespace, config_file: Path | None) -> None:
+        self.line()
+        print("PIPELINE GENIE")
+        self.line()
+        print(f"  Target:  {args.target}")
+        print(f"  Perfil:  {args.profile}")
+        print(f"  Origen:  {'Genie existente' if args.existing_id else 'Genie nuevo'}")
+        if args.existing_id:
+            print(f"  ID:      {args.existing_id}")
+        if config_file:
+            print(f"  Config:  {config_file}")
+        self.line("-")
+
+    def stage(self, description: str, command: list[str] | None = None) -> None:
+        self.step_number += 1
+        print(f"\n[ETAPA {self.step_number}] {description}")
+        if command:
+            print(f"  Comando: {' '.join(map(str, command))}")
+
+    def success(self, detail: str | None = None) -> None:
+        message = "  Resultado: OK"
+        if detail:
+            message += f" - {detail}"
+        print(message)
+
+    def skipped(self, reason: str) -> None:
+        print(f"\n[OMITIDO] {reason}")
+
+    def completed(self) -> None:
+        elapsed = time.perf_counter() - self.started_at
+        print()
+        self.line()
+        print(f"PIPELINE COMPLETADO CORRECTAMENTE en {elapsed:.1f} s")
+        self.line()
+
+
+CONSOLE = PipelineConsole()
+
+
 def run_command(command: list[str], description: str) -> None:
     """Ejecuta un comando desde la raíz del proyecto y falla si no termina bien."""
-    print(f"\n[{description}] {' '.join(command)}")
+    CONSOLE.stage(description, command)
     result = run_subprocess(command, PROJECT_ROOT)
     if result.returncode != 0:
         raise RuntimeError(f"El comando terminó con código {result.returncode}")
+
+    CONSOLE.success()
 
 
 def get_files(directory: Path, pattern: str) -> set[Path]:
@@ -192,6 +246,7 @@ def create_manual_genie_space(
     if not warehouse_id:
         raise ValueError("warehouse_id es obligatorio para crear un Genie nuevo")
     if config is not None:
+        CONSOLE.stage("Creando Genie Space desde configuracion declarativa")
         sources = get_config_sources(config)
         questions = get_config_questions(config)
         if not sources or not questions:
@@ -203,6 +258,7 @@ def create_manual_genie_space(
             warehouse_id,
             PROJECT_ROOT,
         )
+        CONSOLE.success(f"Definiciones creadas: {yaml_file.name} y {json_file.name}")
         return yaml_file, json_file
 
     before_yaml = get_files(RESOURCES_DIRECTORY, "*.genie_space.yml")
@@ -310,13 +366,15 @@ def run_benchmarks(
         "--profile",
         profile,
     ]
-    print(f"\n[Ejecutando benchmarks] {' '.join(command)}")
+    CONSOLE.stage("Ejecutando benchmarks", command)
     result = run_subprocess(command, PROJECT_ROOT, capture_output=True)
-    print(result.stdout)
+    if result.stdout:
+        print(result.stdout)
     if result.stderr:
         print(result.stderr)
     if result.returncode != 0:
         raise RuntimeError("El umbral de benchmarks no fue alcanzado; deploy cancelado")
+    CONSOLE.success(f"Umbral de calidad alcanzado ({threshold:.2%})")
 
 
 def deploy_bundle(target: str, profile: str) -> None:
@@ -334,12 +392,14 @@ def main() -> None:
     if args.config:
         pipeline_config = load_pipeline_config(args.config)
         apply_pipeline_config(args, pipeline_config)
+    CONSOLE.start(args, args.config)
     with LocalProjectTransaction(PROJECT_ROOT, MANAGED_DIRECTORIES):
         if args.existing_id:
             yaml_file, json_file = generar_genie_space_existente(
                 args.existing_id, args.profile
             )
             if pipeline_config:
+                CONSOLE.stage("Generando config.json desde configuracion declarativa")
                 write_config(
                     build_config(
                         get_config_sources(pipeline_config),
@@ -347,6 +407,7 @@ def main() -> None:
                         pipeline_config.get("warehouse_id", args.warehouse_id),
                     )
                 )
+                CONSOLE.success("Configuracion local creada")
             else:
                 generate_config(yaml_file, json_file)
         else:
@@ -381,18 +442,19 @@ def main() -> None:
                     args.benchmark_threshold,
                 )
             else:
-                print(
-                    "Genie nuevo: validación y refactorización obligatorias; "
-                    "se omiten benchmarks API."
-                )
+                CONSOLE.skipped("Benchmarks API: no aplican para un Genie nuevo.")
+
+        else:
+            CONSOLE.skipped("Validacion, assessment, recuperacion y refactorizacion.")
 
         deploy_bundle(args.target, args.profile)
 
-    print("\nPipeline completado correctamente.")
+    CONSOLE.completed()
 
 
 if __name__ == "__main__":
     try:
         main()
     except (FileNotFoundError, RuntimeError) as error:
-        raise SystemExit(f"Pipeline detenido: {error}") from error
+        print(f"\n[ERROR] Pipeline detenido: {error}", file=sys.stderr)
+        raise SystemExit(1) from error

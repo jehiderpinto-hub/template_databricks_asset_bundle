@@ -3,7 +3,7 @@
   "payload_type": "metadata_quality_evidence_input",
   "assessment_type": "Databricks Genie Technical Readiness Assessment",
   "assessment_phase": "metadata_quality_mvp",
-  "generated_at": "2026-08-20T15:54:47.565938+00:00",
+  "generated_at": "2026-08-20T16:27:14.578799+00:00",
   "scope": {
     "catalogs": [
       "brz_dev"
@@ -82,7 +82,7 @@
     },
     "ai_features": {
       "ai_features_enabled": true,
-      "latency_ms": 2593.9717292785645
+      "latency_ms": 9140.437364578247
     },
     "security_constraints": {
       "tables_with_rls": [],
@@ -170,7 +170,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -185,7 +185,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -200,7 +200,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -215,7 +215,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 }
               ],
               "columns_truncated": false,
@@ -301,7 +301,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -316,7 +316,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -331,7 +331,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -346,7 +346,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 }
               ],
               "columns_truncated": false,
@@ -435,7 +435,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -450,7 +450,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -465,7 +465,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -480,7 +480,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -495,7 +495,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -510,7 +510,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -525,7 +525,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -540,7 +540,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -555,7 +555,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 }
               ],
               "columns_truncated": false,
@@ -697,7 +697,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": true,
                   "is_potential_business_term": false,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -712,7 +712,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -727,37 +727,7 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
-                },
-                {
-                  "table_catalog": "brz_dev",
-                  "table_schema": "default",
-                  "table_name": "dim_product_demo_genie",
-                  "column_name": "product_type",
-                  "data_type": "STRING",
-                  "is_nullable": "YES",
-                  "comment": "Tipo o categoría del producto.",
-                  "ordinal_position": 4,
-                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
-                  "has_column_comment": true,
-                  "is_likely_technical_column_name": false,
-                  "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
-                },
-                {
-                  "table_catalog": "brz_dev",
-                  "table_schema": "default",
-                  "table_name": "dim_product_demo_genie",
-                  "column_name": "product_size",
-                  "data_type": "LONG",
-                  "is_nullable": "YES",
-                  "comment": "Tamaño del producto.",
-                  "ordinal_position": 5,
-                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
-                  "has_column_comment": true,
-                  "is_likely_technical_column_name": false,
-                  "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 },
                 {
                   "table_catalog": "brz_dev",
@@ -772,7 +742,37 @@
                   "has_column_comment": true,
                   "is_likely_technical_column_name": false,
                   "is_potential_business_term": true,
-                  "collection_timestamp": "2026-08-20T15:54:43.729372"
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_type",
+                  "data_type": "STRING",
+                  "is_nullable": "YES",
+                  "comment": "Tipo o categoría del producto.",
+                  "ordinal_position": 4,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
+                },
+                {
+                  "table_catalog": "brz_dev",
+                  "table_schema": "default",
+                  "table_name": "dim_product_demo_genie",
+                  "column_name": "product_size",
+                  "data_type": "LONG",
+                  "is_nullable": "YES",
+                  "comment": "Tamaño del producto.",
+                  "ordinal_position": 5,
+                  "table_fqn": "brz_dev.default.dim_product_demo_genie",
+                  "has_column_comment": true,
+                  "is_likely_technical_column_name": false,
+                  "is_potential_business_term": true,
+                  "collection_timestamp": "2026-08-20T16:27:09.235631"
                 }
               ],
               "columns_truncated": false,

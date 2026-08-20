@@ -13,7 +13,7 @@ joins:
     source: brz_dev.default.dim_product_demo_genie
     "on": source.product_id = dim_product.product_id
 
-comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de fecha, cliente y producto para responder preguntas sobre ingresos, descuentos, unidades vendidas y órdenes, segmentados por año, mes, cliente y producto."
+comment: "Vista semántica central de ventas. Combina la tabla de hechos de ventas con las dimensiones de fecha, cliente y producto para responder preguntas sobre ingresos, descuentos, unidades vendidas y órdenes a lo largo del tiempo y por segmento de cliente o categoría de producto."
 
 dimensions:
   - name: Año
@@ -22,24 +22,24 @@ dimensions:
     synonyms:
       - year
       - anio
-  - name: Mes
+  - name: Mes Número
     expr: dim_date.month
-    comment: "Número del mes en que se realizó la venta."
+    comment: "Número del mes (1-12) en que se realizó la venta."
     synonyms:
-      - month
+      - month number
       - numero de mes
-  - name: Nombre del Mes
+  - name: Mes Nombre
     expr: dim_date.month_name
     comment: "Nombre del mes en que se realizó la venta."
     synonyms:
       - month name
-      - mes
+      - nombre mes
   - name: Fecha
     expr: source.date_id
     comment: "Fecha exacta en que se realizó la orden."
     synonyms:
       - date
-      - fecha de orden
+      - order date
   - name: ID Cliente
     expr: source.customer_id
     comment: "Identificador único del cliente."
@@ -48,7 +48,7 @@ dimensions:
       - cliente id
   - name: Nombre Cliente
     expr: dim_customer.customer_name
-    comment: "Nombre completo del cliente que realizó la orden."
+    comment: "Nombre completo del cliente."
     synonyms:
       - customer name
       - cliente
@@ -60,7 +60,7 @@ dimensions:
       - segmento
   - name: ID Producto
     expr: source.product_id
-    comment: "Identificador único del producto vendido."
+    comment: "Identificador único del producto."
     synonyms:
       - product id
       - producto id
@@ -70,18 +70,18 @@ dimensions:
     synonyms:
       - product name
       - producto
-  - name: Tipo de Producto
-    expr: dim_product.product_type
-    comment: "Categoría o tipo del producto."
-    synonyms:
-      - product type
-      - categoria producto
   - name: Marca
     expr: dim_product.brand
     comment: "Marca comercial del producto."
     synonyms:
       - brand
       - marca producto
+  - name: Tipo Producto
+    expr: dim_product.product_type
+    comment: "Tipo o categoría del producto."
+    synonyms:
+      - product type
+      - categoria
   - name: Fabricante
     expr: dim_product.manufacturer
     comment: "Fabricante del producto."
@@ -160,7 +160,7 @@ measures:
         type: exact
         places: 2
     synonyms:
-      - gross net difference
+      - discount gap
       - diferencia ventas
   - name: Unidades Vendidas
     expr: SUM(quantity)
@@ -206,4 +206,4 @@ measures:
         places: 2
     synonyms:
       - line count
-      - total lineas
+      - lineas de orden
