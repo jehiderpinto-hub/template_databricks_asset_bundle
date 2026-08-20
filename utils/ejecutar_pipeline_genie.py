@@ -314,6 +314,21 @@ def _generate_benchmark_id() -> str:
     return uuid4().hex
 
 
+def _autogenerate_empty_ids(node: Any) -> None:
+    """Genera IDs para cualquier campo ``id`` vacío dentro del payload del Genie."""
+    if isinstance(node, dict):
+        if "id" in node:
+            current_id = node.get("id")
+            if not isinstance(current_id, str) or not current_id.strip():
+                node["id"] = _generate_benchmark_id()
+        for value in node.values():
+            _autogenerate_empty_ids(value)
+        return
+    if isinstance(node, list):
+        for item in node:
+            _autogenerate_empty_ids(item)
+
+
 def _merge_json_values(base_value: Any, override_value: Any) -> Any:
     """Hace merge recursivo: dict recursivo, listas por anexado, escalares reemplazo."""
     if isinstance(base_value, dict) and isinstance(override_value, dict):
@@ -354,6 +369,8 @@ def merge_benchmarks_into_genie_json(
                     )
                 else:
                     genie_space[key] = pipeline_config[key]
+
+    _autogenerate_empty_ids(genie_space)
 
     benchmark_container = genie_space.setdefault("benchmarks", {})
     benchmark_questions = benchmark_container.setdefault("questions", [])
