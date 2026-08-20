@@ -10,6 +10,6 @@ resources:
         - task_key: run_genie_assessment
           environment_key: default
           notebook_task:
-            notebook_path: ../../src/assessment/genie_assessment.ipynb
+            notebook_path: ../../src/notebooks/genie_assessment.ipynb
             base_parameters:
               config_workspace_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}/files/genie_assessment/temp/config.json

@@ -84,7 +84,7 @@ def main() -> None:
         "--workspace-path",
         default=(
             "/Workspace/Users/josorioos@argos.com.co/"
-            ".bundle/template_databricks_asset_bundle/dev/files/src/assessment"
+            ".bundle/template_databricks_asset_bundle/dev/files/src/notebooks"
         ),
         help="Ruta remota de la carpeta de salidas en Databricks Workspace.",
     )
