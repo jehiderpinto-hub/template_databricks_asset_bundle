@@ -120,7 +120,7 @@ def create_metric_views(
     proposals = _load_metric_view_proposals(metric_view_yaml)
     created_identifiers: list[str] = []
     used_names: set[str] = set()
-    for index, proposal in enumerate(proposals, start=1):
+    for proposal in proposals:
         metric_view_name = build_metric_view_name(base_name, proposal)
         candidate_name = metric_view_name
         suffix = 2

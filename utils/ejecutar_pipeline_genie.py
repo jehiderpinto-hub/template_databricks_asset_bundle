@@ -3,7 +3,6 @@
 import argparse
 import json
 import re
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -196,6 +195,7 @@ def apply_pipeline_config(args: argparse.Namespace, config: dict) -> None:
         "title",
         "warehouse_id",
         "benchmark_threshold",
+        "revert_on_failed_benchmark",
     ]:
         if name in config and config[name] is not None:
             setattr(args, name, config[name])
@@ -489,6 +489,13 @@ def resolve_refactor(
     return True
 
 
+def resolve_revert_on_failed_benchmark(config: dict | None) -> bool:
+    """Resuelve si el pipeline debe revertir cambios ante benchmark fallido."""
+    if config and "revert_on_failed_benchmark" in config:
+        return bool(config.get("revert_on_failed_benchmark"))
+    return True
+
+
 def resolve_metric_view_destination(config: dict | None) -> str:
     """Obtiene el destino catalog.schema para crear metric views."""
     if not config:
@@ -590,9 +597,13 @@ def snapshot_genie_space(space_id: str, profile: str) -> dict[str, Any]:
     }
 
 
-def restore_genie_space(snapshot: dict[str, Any], profile: str) -> None:
-    """Restaura un Genie remoto a su estado previo al deploy fallido."""
-    space_id = str(snapshot["space_id"])
+def restore_genie_space(
+    snapshot: dict[str, Any],
+    profile: str,
+    target_space_id: str | None = None,
+) -> None:
+    """Restaura un Genie remoto a partir de un snapshot."""
+    space_id = target_space_id or str(snapshot["space_id"])
     CONSOLE.stage(f"Restaurando Genie remoto {space_id} al estado previo")
     client = WorkspaceClient(profile=profile)
     update_kwargs: dict[str, Any] = {
@@ -759,7 +770,6 @@ def validate_and_run_job(target: str, profile: str) -> None:
 def refactor_genie(json_file: Path, profile: str, pipeline_config: dict | None) -> list[str]:
     """Crea la Metric View recuperada y actualiza el JSON del Genie."""
     config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
-    output_directory = PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
     with config_file.open(encoding="utf-8") as file:
         config = json.load(file)
     metric_view_destination = resolve_metric_view_destination(pipeline_config)
@@ -878,13 +888,6 @@ def run_benchmarks(
     raise RuntimeError(f"Error ejecutando benchmarks: código {result.returncode}")
 
 
-def cleanup_assessment_outputs() -> None:
-    """Elimina los artefactos locales del assessment para mantener limpia la carpeta."""
-    assessment_outputs = PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
-    if assessment_outputs.exists():
-        shutil.rmtree(assessment_outputs)
-
-
 def deploy_bundle(target: str, profile: str) -> None:
     """Despliega el bundle después de superar la validación de benchmarks."""
     run_command(
@@ -901,101 +904,102 @@ def main() -> None:
         pipeline_config = load_pipeline_config(args.config)
         apply_pipeline_config(args, pipeline_config)
     CONSOLE.start(args, args.config)
-    try:
-        with LocalProjectTransaction(MANAGED_DIRECTORIES):
-            created_metric_view_identifiers: list[str] = []
-            if args.existing_id:
-                yaml_file, json_file = generar_genie_space_existente(
-                    args.existing_id, args.profile
-                )
-                if pipeline_config:
-                    CONSOLE.stage("Generando config.json desde configuracion declarativa")
-                    generate_config_from_import(
-                        yaml_file,
-                        json_file,
-                        pipeline_config,
-                    )
-                    CONSOLE.success("Configuracion local creada con el warehouse importado")
-                else:
-                    generate_config(yaml_file, json_file)
-            else:
-                yaml_file, json_file = create_manual_genie_space(
-                    args.title,
-                    args.warehouse_id,
+    with LocalProjectTransaction(MANAGED_DIRECTORIES):
+        created_metric_view_identifiers: list[str] = []
+        if args.existing_id:
+            yaml_file, json_file = generar_genie_space_existente(
+                args.existing_id, args.profile
+            )
+            if pipeline_config:
+                CONSOLE.stage("Generando config.json desde configuracion declarativa")
+                generate_config_from_import(
+                    yaml_file,
+                    json_file,
                     pipeline_config,
                 )
-
-            configured_benchmarks = get_config_benchmarks(pipeline_config)
-            CONSOLE.stage("Preparando benchmarks del Genie")
-            total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
-                json_file,
-                pipeline_config,
-                configured_benchmarks,
-                require_configured=not bool(args.existing_id),
-            )
-            CONSOLE.success(
-                f"Benchmarks finales a desplegar: {total_benchmarks} "
-                f"(agregados desde config: {added_benchmarks})"
-            )
-
-            should_validate = resolve_run_validation(
-                pipeline_config,
-                use_interactive_prompt=bool(args.existing_id),
-            )
-            should_refactor = resolve_refactor(
-                pipeline_config,
-                should_validate=should_validate,
-                use_interactive_prompt=bool(args.existing_id),
-            )
-
-            if should_validate:
-                validate_and_run_job(args.target, args.profile)
-                retrieve_assessment_outputs(args.profile)
-                if should_refactor:
-                    created_metric_view_identifiers = refactor_genie(
-                        json_file,
-                        args.profile,
-                        pipeline_config,
-                    )
-                else:
-                    CONSOLE.skipped(
-                        "Refactorización omitida por configuración (refactor=false)."
-                    )
-
+                CONSOLE.success("Configuracion local creada con el warehouse importado")
             else:
-                CONSOLE.skipped("Validación, assessment, recuperación y refactorización.")
-
-            resource_name = get_genie_resource_name(yaml_file)
-            previous_snapshot: dict[str, Any] | None = None
-            previous_deployed_space_id: str | None = None
-
-            if args.existing_id:
-                try:
-                    previous_deployed_space_id = args.existing_id
-                    previous_snapshot = snapshot_genie_space(
-                        previous_deployed_space_id,
-                        args.profile,
-                    )
-                except RuntimeError:
-                    CONSOLE.skipped(
-                        "No se encontró un despliegue previo para snapshot; no habrá rollback automático."
-                    )
-
-            deploy_bundle(args.target, args.profile)
-            deployed_space_id = resolve_deployed_genie_space_id(
-                resource_name,
-                args.target,
-                args.profile,
-                fallback_space_id=args.existing_id if args.existing_id else None,
+                generate_config(yaml_file, json_file)
+        else:
+            yaml_file, json_file = create_manual_genie_space(
+                args.title,
+                args.warehouse_id,
+                pipeline_config,
             )
-            benchmark_passed = run_benchmarks(
-                deployed_space_id,
-                json_file,
-                args.profile,
-                args.benchmark_threshold,
-                bool(args.existing_id),
-            )
-            if not benchmark_passed:
+
+        configured_benchmarks = get_config_benchmarks(pipeline_config)
+        CONSOLE.stage("Preparando benchmarks del Genie")
+        total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
+            json_file,
+            pipeline_config,
+            configured_benchmarks,
+            require_configured=not bool(args.existing_id),
+        )
+        CONSOLE.success(
+            f"Benchmarks finales a desplegar: {total_benchmarks} "
+            f"(agregados desde config: {added_benchmarks})"
+        )
+
+        should_validate = resolve_run_validation(
+            pipeline_config,
+            use_interactive_prompt=bool(args.existing_id),
+        )
+        should_refactor = resolve_refactor(
+            pipeline_config,
+            should_validate=should_validate,
+            use_interactive_prompt=bool(args.existing_id),
+        )
+        revert_on_failed_benchmark = resolve_revert_on_failed_benchmark(pipeline_config)
+
+        if should_validate:
+            validate_and_run_job(args.target, args.profile)
+            retrieve_assessment_outputs(args.profile)
+            if should_refactor:
+                created_metric_view_identifiers = refactor_genie(
+                    json_file,
+                    args.profile,
+                    pipeline_config,
+                )
+            else:
+                CONSOLE.skipped(
+                    "Refactorización omitida por configuración (refactor=false)."
+                )
+
+        else:
+            CONSOLE.skipped("Validación, assessment, recuperación y refactorización.")
+
+        resource_name = get_genie_resource_name(yaml_file)
+        previous_snapshot: dict[str, Any] | None = None
+        previous_deployed_space_id: str | None = None
+
+        if args.existing_id:
+            try:
+                previous_deployed_space_id = args.existing_id
+                previous_snapshot = snapshot_genie_space(
+                    previous_deployed_space_id,
+                    args.profile,
+                )
+            except RuntimeError:
+                CONSOLE.skipped(
+                    "No se encontró un despliegue previo para snapshot; no habrá rollback automático."
+                )
+
+        deploy_bundle(args.target, args.profile)
+        deployed_space_id = resolve_deployed_genie_space_id(
+            resource_name,
+            args.target,
+            args.profile,
+            fallback_space_id=args.existing_id if args.existing_id else None,
+        )
+        benchmark_passed = run_benchmarks(
+            deployed_space_id,
+            json_file,
+            args.profile,
+            args.benchmark_threshold,
+            revert_on_failed_benchmark,
+        )
+        if not benchmark_passed:
+            if revert_on_failed_benchmark:
                 if args.existing_id:
                     if (
                         previous_snapshot is not None
@@ -1003,11 +1007,11 @@ def main() -> None:
                         and previous_deployed_space_id == deployed_space_id
                     ):
                         restore_genie_space(previous_snapshot, args.profile)
-                    elif previous_deployed_space_id and previous_deployed_space_id != deployed_space_id:
-                        delete_genie_space(
-                            deployed_space_id,
+                    elif previous_snapshot is not None and previous_deployed_space_id:
+                        restore_genie_space(
+                            previous_snapshot,
                             args.profile,
-                            "El deploy creó un Genie nuevo; se revierte enviándolo a papelera.",
+                            target_space_id=deployed_space_id,
                         )
                     else:
                         CONSOLE.skipped(
@@ -1019,10 +1023,14 @@ def main() -> None:
                         args.profile,
                         "El benchmark del Genie nuevo no superó el umbral; eliminando deploy remoto.",
                     )
-                    CONSOLE.skipped("Deploy revertido para Genie nuevo por fallo de benchmark.")
+                    CONSOLE.skipped(
+                        "Deploy revertido para Genie nuevo por fallo de benchmark."
+                    )
                 cleanup_metric_views(created_metric_view_identifiers, args.profile)
-    finally:
-        cleanup_assessment_outputs()
+            else:
+                print(
+                    "\n[WARNING] Benchmarks no superan el umbral, pero la configuración permite conservar los cambios."
+                )
 
     CONSOLE.completed()
 

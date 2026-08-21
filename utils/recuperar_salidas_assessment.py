@@ -33,6 +33,17 @@ def _is_metric_view_output(file_name: str) -> bool:
     return any(fnmatch.fnmatch(file_name, pattern) for pattern in METRIC_VIEW_PATTERNS)
 
 
+def _clear_previous_outputs(output_directory: Path) -> None:
+    """Reemplaza los artefactos de una ejecución previa sin borrar la carpeta."""
+    replacement_patterns = OUTPUT_FILE_PATTERNS + METRIC_VIEW_PATTERNS + (
+        "genie_proposed_metric_view.yml",
+        "genie_metric_views_manifest.json",
+    )
+    for child in output_directory.iterdir():
+        if child.is_file() and any(fnmatch.fnmatch(child.name, pattern) for pattern in replacement_patterns):
+            child.unlink()
+
+
 def export_workspace_directory(
     workspace_path: str,
     staging_directory: Path,
@@ -61,6 +72,7 @@ def retrieve_outputs(
 ) -> list[Path]:
     """Copia las salidas permitidas desde Workspace a la carpeta local."""
     output_directory.mkdir(parents=True, exist_ok=True)
+    _clear_previous_outputs(output_directory)
     staging_directory = output_directory / ".workspace_export"
     if staging_directory.exists():
         shutil.rmtree(staging_directory)
