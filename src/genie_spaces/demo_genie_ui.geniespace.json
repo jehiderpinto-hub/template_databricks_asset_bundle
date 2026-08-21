@@ -3,6 +3,18 @@
   "data_sources": {
     "tables": [
       {
+        "identifier": "brz_dev.default.mv_fact_sales_demo_genie",
+        "column_configs": []
+      },
+      {
+        "identifier": "brz_dev.default.mv_facturacion_hnd",
+        "column_configs": []
+      },
+      {
+        "identifier": "brz_dev.default.mv_facturacion_hnd_2",
+        "column_configs": []
+      },
+      {
         "identifier": "gld_star_dev.hon.vw_rentabilidad_honduras",
         "column_configs": []
       },
@@ -43,7 +55,7 @@
   "instructions": {
     "example_question_sqls": [
       {
-        "id": "1a15c9d3b60d4b0d9b98a4138459efa7",
+        "id": "b18f41c54b494cc3b9e777cf3c8e8ce2",
         "question": [
           "Pregunta de ejemplo"
         ],
@@ -84,7 +96,7 @@
         "evaluation_note": [
           "Debe devolver una sola fila con una sola columna numérica llamada total_clientes_padre, contando registros de gld_star_prod.hon.maestro_clientes donde TIPO_DE_CODIGO sea 'Padre'."
         ],
-        "id": "010dced290a94b0996e5a0963e553e68"
+        "id": "35386a42c95247ef80e4cdeede18025c"
       }
     ]
   }

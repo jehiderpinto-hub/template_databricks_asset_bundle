@@ -88,7 +88,7 @@ Reglas clave:
 - El archivo local consolidado se guarda como [genie_assessment/temp/assessment_outputs/genie_proposed_metric_view.yml](genie_assessment/temp/assessment_outputs/genie_proposed_metric_view.yml).
 - Agrega en el YAML una clave `metric_view_destination: "catalog.schema"` para crear las metric views.
 - Agrega `revert_on_failed_benchmark: true|false` para decidir si el deploy se revierte cuando el benchmark no pasa.
-- Los artefactos de `assessment_outputs` se reemplazan en cada ejecución; no se borran al terminar.
+- Los artefactos de `assessment_outputs` se limpian al inicio de cada ejecución y luego se regeneran; el paso de benchmarks no los borra al final.
 - IDs vacíos (`id: ""`) en bloques seteables se autogeneran durante el pipeline.
 
 ---

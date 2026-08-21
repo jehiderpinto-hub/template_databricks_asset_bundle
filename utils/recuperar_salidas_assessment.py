@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 import yaml
-from comun import run_subprocess
+from comun import clear_directory_contents, run_subprocess
 
 
 OUTPUT_FILE_PATTERNS = (
@@ -35,13 +35,7 @@ def _is_metric_view_output(file_name: str) -> bool:
 
 def _clear_previous_outputs(output_directory: Path) -> None:
     """Reemplaza los artefactos de una ejecución previa sin borrar la carpeta."""
-    replacement_patterns = OUTPUT_FILE_PATTERNS + METRIC_VIEW_PATTERNS + (
-        "genie_proposed_metric_view.yml",
-        "genie_metric_views_manifest.json",
-    )
-    for child in output_directory.iterdir():
-        if child.is_file() and any(fnmatch.fnmatch(child.name, pattern) for pattern in replacement_patterns):
-            child.unlink()
+    clear_directory_contents(output_directory)
 
 
 def export_workspace_directory(
@@ -74,8 +68,6 @@ def retrieve_outputs(
     output_directory.mkdir(parents=True, exist_ok=True)
     _clear_previous_outputs(output_directory)
     staging_directory = output_directory / ".workspace_export"
-    if staging_directory.exists():
-        shutil.rmtree(staging_directory)
 
     try:
         export_workspace_directory(workspace_path, staging_directory, profile)
@@ -119,7 +111,8 @@ def retrieve_outputs(
         return copied_files
     finally:
         if staging_directory.exists():
-            shutil.rmtree(staging_directory)
+            clear_directory_contents(staging_directory)
+            staging_directory.rmdir()
 
 
 def main() -> None:

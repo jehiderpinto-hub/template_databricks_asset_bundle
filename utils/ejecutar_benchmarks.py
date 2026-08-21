@@ -10,6 +10,10 @@ from comun import read_json_file
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.dashboards import EvaluationStatusType, GenieEvalAssessment
 
+DEFAULT_REPORT = (
+    Path("genie_assessment") / "temp" / "assessment_outputs" / "genie_benchmark_results.json"
+)
+
 
 def _extract_sql_from_eval_response(responses: list[Any] | None) -> str:
     """Obtiene el SQL ejecutado desde una respuesta de evaluación del Genie."""

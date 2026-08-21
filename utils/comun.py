@@ -1,6 +1,7 @@
 """Funciones compartidas por los utilitarios del bundle."""
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -45,3 +46,13 @@ def run_subprocess(
         errors="replace",
         check=False,
     )
+
+
+def clear_directory_contents(directory: Path) -> None:
+    """Elimina todo el contenido de un directorio sin borrar el directorio."""
+    directory.mkdir(parents=True, exist_ok=True)
+    for child in directory.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()

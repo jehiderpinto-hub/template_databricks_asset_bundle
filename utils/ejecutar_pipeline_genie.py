@@ -10,7 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
-from comun import run_subprocess
+from comun import clear_directory_contents, run_subprocess
 from crear_genie_desde_entradas import create_files
 from databricks.sdk import WorkspaceClient
 from leer_estructura_genie import build_config as build_imported_genie_config
@@ -24,7 +24,6 @@ SOURCE_DIRECTORY = PROJECT_ROOT / "src" / "genie_spaces"
 MANAGED_DIRECTORIES = [
     RESOURCES_DIRECTORY,
     SOURCE_DIRECTORY,
-    PROJECT_ROOT / "genie_assessment" / "temp",
 ]
 METRIC_VIEW_OUTPUT_FILE = (
     PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs" / "genie_proposed_metric_view.yml"
@@ -36,6 +35,7 @@ METRIC_VIEW_MANIFEST_FILE = (
     / "assessment_outputs"
     / "genie_metric_views_manifest.json"
 )
+ASSESSMENT_OUTPUTS_DIRECTORY = PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
 
 
 class PipelineConsole:
@@ -906,6 +906,9 @@ def main() -> None:
     CONSOLE.start(args, args.config)
     with LocalProjectTransaction(MANAGED_DIRECTORIES):
         created_metric_view_identifiers: list[str] = []
+        CONSOLE.stage("Limpiando assessment_outputs")
+        clear_directory_contents(ASSESSMENT_OUTPUTS_DIRECTORY)
+        CONSOLE.success("Carpeta assessment_outputs limpia")
         if args.existing_id:
             yaml_file, json_file = generar_genie_space_existente(
                 args.existing_id, args.profile
