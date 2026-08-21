@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -12,6 +13,7 @@ from uuid import uuid4
 import yaml
 from comun import run_subprocess
 from crear_genie_desde_entradas import create_files
+from databricks.sdk import WorkspaceClient
 from leer_estructura_genie import build_config as build_imported_genie_config
 from leer_estructura_genie import write_config
 from transaccion_proyecto import LocalProjectTransaction
@@ -25,6 +27,16 @@ MANAGED_DIRECTORIES = [
     SOURCE_DIRECTORY,
     PROJECT_ROOT / "genie_assessment" / "temp",
 ]
+METRIC_VIEW_OUTPUT_FILE = (
+    PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs" / "genie_proposed_metric_view.yml"
+)
+METRIC_VIEW_MANIFEST_FILE = (
+    PROJECT_ROOT
+    / "genie_assessment"
+    / "temp"
+    / "assessment_outputs"
+    / "genie_metric_views_manifest.json"
+)
 
 
 class PipelineConsole:
@@ -209,7 +221,7 @@ def get_config_sources(config: dict) -> list[str]:
     return sources
 
 
-def get_config_benchmarks(config: dict | None) -> list[dict[str, str]]:
+def get_config_benchmarks(config: dict | None) -> list[dict[str, Any]]:
     """Valida y devuelve benchmarks declarados en el YAML de pipeline."""
     if not config:
         return []
@@ -229,22 +241,30 @@ def get_config_benchmarks(config: dict | None) -> list[dict[str, str]]:
     else:
         raise ValueError("benchmarks debe ser una lista o un objeto con questions")
 
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
     for index, item in enumerate(benchmark_items):
         if not isinstance(item, dict):
             raise ValueError(f"benchmarks[{index}] debe ser un objeto")
 
-        raw_question = item.get("question")
-        if isinstance(raw_question, list):
-            question = raw_question[0] if raw_question else ""
+        question_values = item.get("question")
+        answer_values = item.get("answer")
+        benchmark_id = item.get("id")
+        evaluation_note = item.get("evaluation_note")
+
+        if isinstance(question_values, list):
+            question = question_values[0].strip() if question_values else ""
+        elif isinstance(question_values, str):
+            question = question_values.strip()
+            question_values = [question]
         else:
-            question = raw_question
+            question = ""
 
         expected_sql = item.get("expected_sql") or item.get("sql") or item.get("answer_sql")
-        if not expected_sql:
-            answer_items = item.get("answer", [])
-            if isinstance(answer_items, list):
-                for answer in answer_items:
+        normalized_answer_values: list[dict[str, Any]] = []
+        if isinstance(answer_values, list):
+            normalized_answer_values = answer_values
+            if not expected_sql:
+                for answer in answer_values:
                     if not isinstance(answer, dict):
                         continue
                     if answer.get("format") != "SQL":
@@ -257,33 +277,33 @@ def get_config_benchmarks(config: dict | None) -> list[dict[str, str]]:
                     if expected_sql:
                         break
 
-        evaluation_note = item.get("evaluation_note")
-        benchmark_id = item.get("id")
-
         if not isinstance(question, str) or not question.strip():
-            raise ValueError(f"benchmarks[{index}].question debe ser texto no vacío")
+            raise ValueError(f"benchmarks[{index}].question debe ser texto o lista no vacía")
         if not isinstance(expected_sql, str) or not expected_sql.strip():
             raise ValueError(
-                f"benchmarks[{index}] debe incluir expected_sql (o sql/answer_sql) no vacío"
+                f"benchmarks[{index}] debe incluir answer SQL o expected_sql/sql/answer_sql"
             )
-        if evaluation_note is not None and (
-            not isinstance(evaluation_note, str) or not evaluation_note.strip()
-        ):
-            raise ValueError(f"benchmarks[{index}].evaluation_note debe ser texto no vacío")
 
-        benchmark: dict[str, str] = {
-            "question": question.strip(),
-            "expected_sql": expected_sql.strip(),
+        benchmark: dict[str, Any] = {
+            "question": question_values if isinstance(question_values, list) else [question.strip()],
+            "answer": normalized_answer_values
+            if normalized_answer_values
+            else [
+                {
+                    "format": "SQL",
+                    "content": [expected_sql.strip()],
+                }
+            ],
         }
         if isinstance(benchmark_id, str) and _is_valid_benchmark_id(benchmark_id.strip()):
             benchmark["id"] = benchmark_id.strip()
-        if evaluation_note:
+        if evaluation_note is not None:
             if isinstance(evaluation_note, list):
                 note_text = str(evaluation_note[0]).strip() if evaluation_note else ""
             else:
                 note_text = str(evaluation_note).strip()
             if note_text:
-                benchmark["evaluation_note"] = note_text
+                benchmark["evaluation_note"] = [note_text]
         normalized.append(benchmark)
 
     return normalized
@@ -300,11 +320,22 @@ def _is_valid_benchmark_id(value: str) -> bool:
 def _extract_benchmark_entry_fields(entry: dict[str, Any]) -> tuple[str, str]:
     question_values = entry.get("question", [])
     answer_values = entry.get("answer", [])
-    question = question_values[0].strip() if question_values else ""
+    if isinstance(question_values, list):
+        question = question_values[0].strip() if question_values else ""
+    elif isinstance(question_values, str):
+        question = question_values.strip()
+    else:
+        question = ""
     expected_sql = ""
     for answer in answer_values:
+        if not isinstance(answer, dict):
+            continue
         if answer.get("format") == "SQL":
-            expected_sql = "".join(answer.get("content", [])).strip()
+            content = answer.get("content", [])
+            if isinstance(content, list):
+                expected_sql = "".join(content).strip()
+            elif isinstance(content, str):
+                expected_sql = content.strip()
             if expected_sql:
                 break
     return question, expected_sql
@@ -344,10 +375,20 @@ def _merge_json_values(base_value: Any, override_value: Any) -> Any:
     return override_value
 
 
+def _merge_instruction_values(base_value: Any, override_value: Any) -> Any:
+    """Fusiona instrucciones reemplazando cualquier clave definida en el override."""
+    if isinstance(base_value, dict) and isinstance(override_value, dict):
+        merged = dict(base_value)
+        for key, value in override_value.items():
+            merged[key] = _merge_instruction_values(base_value.get(key), value)
+        return merged
+    return override_value
+
+
 def merge_benchmarks_into_genie_json(
     json_file: Path,
     pipeline_config: dict | None,
-    configured_benchmarks: list[dict[str, str]],
+    configured_benchmarks: list[dict[str, Any]],
     require_configured: bool,
 ) -> tuple[int, int]:
     """Combina benchmarks del JSON con los del config y persiste el resultado."""
@@ -363,10 +404,16 @@ def merge_benchmarks_into_genie_json(
         for key in ("version", "data_sources", "instructions"):
             if key in pipeline_config and pipeline_config[key] is not None:
                 if key in genie_space:
-                    genie_space[key] = _merge_json_values(
-                        genie_space[key],
-                        pipeline_config[key],
-                    )
+                    if key == "instructions":
+                        genie_space[key] = _merge_instruction_values(
+                            genie_space[key],
+                            pipeline_config[key],
+                        )
+                    else:
+                        genie_space[key] = _merge_json_values(
+                            genie_space[key],
+                            pipeline_config[key],
+                        )
                 else:
                     genie_space[key] = pipeline_config[key]
 
@@ -392,25 +439,15 @@ def merge_benchmarks_into_genie_json(
 
     added_count = 0
     for benchmark in configured_benchmarks:
-        signature = (
-            benchmark["question"].strip().lower(),
-            _normalize_sql_text(benchmark["expected_sql"]),
-        )
+        signature = _extract_benchmark_entry_fields(benchmark)
+        signature = (signature[0].strip().lower(), _normalize_sql_text(signature[1]))
         if signature in existing_signatures:
             continue
 
-        new_entry: dict[str, Any] = {
-            "id": benchmark.get("id") or _generate_benchmark_id(),
-            "question": [benchmark["question"]],
-            "answer": [
-                {
-                    "format": "SQL",
-                    "content": [benchmark["expected_sql"]],
-                }
-            ],
-        }
-        if "evaluation_note" in benchmark:
-            new_entry["evaluation_note"] = [benchmark["evaluation_note"]]
+        new_entry = dict(benchmark)
+        new_entry["id"] = benchmark.get("id") or _generate_benchmark_id()
+        if "evaluation_note" in new_entry and not isinstance(new_entry["evaluation_note"], list):
+            new_entry["evaluation_note"] = [str(new_entry["evaluation_note"])]
 
         benchmark_questions.append(new_entry)
         existing_signatures.add(signature)
@@ -452,7 +489,25 @@ def resolve_refactor(
     return True
 
 
-def resolve_deployed_genie_space_id(resource_name: str, target: str, profile: str) -> str:
+def resolve_metric_view_destination(config: dict | None) -> str:
+    """Obtiene el destino catalog.schema para crear metric views."""
+    if not config:
+        raise ValueError("metric_view_destination es obligatorio en pipeline_config.yml")
+    destination = config.get("metric_view_destination")
+    if not isinstance(destination, str) or not destination.strip():
+        raise ValueError("metric_view_destination es obligatorio y debe tener formato catalog.schema")
+    parts = [part.strip() for part in destination.split(".") if part.strip()]
+    if len(parts) != 2:
+        raise ValueError("metric_view_destination debe tener formato catalog.schema")
+    return ".".join(parts)
+
+
+def resolve_deployed_genie_space_id(
+    resource_name: str,
+    target: str,
+    profile: str,
+    fallback_space_id: str | None = None,
+) -> str:
     """Obtiene el ID del Genie desplegado desde el resumen JSON del bundle."""
     command = [
         "databricks",
@@ -484,15 +539,81 @@ def resolve_deployed_genie_space_id(resource_name: str, target: str, profile: st
     if candidate and candidate.get("id"):
         CONSOLE.success(f"ID resuelto: {candidate['id']}")
         return str(candidate["id"])
+    if candidate and fallback_space_id:
+        CONSOLE.skipped(
+            f"El recurso '{resource_name}' no tiene ID en bundle summary; usando fallback {fallback_space_id}."
+        )
+        return fallback_space_id
 
     for name, resource in genie_spaces.items():
         if name == resource_name and resource.get("id"):
             CONSOLE.success(f"ID resuelto: {resource['id']}")
             return str(resource["id"])
 
-    raise RuntimeError(
-        f"No se encontró el recurso Genie '{resource_name}' con ID en bundle summary"
-    )
+    if fallback_space_id:
+        CONSOLE.skipped(
+            f"No se encontró ID para '{resource_name}' en bundle summary; usando fallback {fallback_space_id}."
+        )
+        return fallback_space_id
+
+    raise RuntimeError(f"No se encontró el recurso Genie '{resource_name}' con ID en bundle summary")
+
+
+def get_genie_resource_name(yaml_file: Path) -> str:
+    """Obtiene la clave del recurso Genie a partir del YAML generado/importado."""
+    with yaml_file.open(encoding="utf-8") as file:
+        resource_yaml = yaml.safe_load(file) or {}
+    genie_spaces = resource_yaml.get("resources", {}).get("genie_spaces", {})
+    if not isinstance(genie_spaces, dict) or not genie_spaces:
+        raise ValueError(f"El archivo {yaml_file} no contiene resources.genie_spaces")
+    return next(iter(genie_spaces.keys()))
+
+
+def snapshot_genie_space(space_id: str, profile: str) -> dict[str, Any]:
+    """Captura el estado remoto actual de un Genie para poder restaurarlo."""
+    CONSOLE.stage("Capturando snapshot remoto del Genie existente")
+    client = WorkspaceClient(profile=profile)
+    space = client.genie.get_space(space_id, include_serialized_space=True)
+    if not space.serialized_space:
+        raise RuntimeError(
+            f"No se pudo obtener serialized_space para snapshot del Genie {space_id}"
+        )
+    CONSOLE.success(f"Snapshot capturado para Genie {space_id}")
+    return {
+        "space_id": space_id,
+        "serialized_space": space.serialized_space,
+        "title": space.title,
+        "description": space.description,
+        "parent_path": space.parent_path,
+        "warehouse_id": space.warehouse_id,
+        "etag": space.etag,
+    }
+
+
+def restore_genie_space(snapshot: dict[str, Any], profile: str) -> None:
+    """Restaura un Genie remoto a su estado previo al deploy fallido."""
+    space_id = str(snapshot["space_id"])
+    CONSOLE.stage(f"Restaurando Genie remoto {space_id} al estado previo")
+    client = WorkspaceClient(profile=profile)
+    update_kwargs: dict[str, Any] = {
+        "serialized_space": snapshot["serialized_space"],
+        "title": snapshot["title"],
+        "description": snapshot["description"],
+        "parent_path": snapshot["parent_path"],
+        "warehouse_id": snapshot["warehouse_id"],
+    }
+    if snapshot.get("etag"):
+        update_kwargs["etag"] = snapshot["etag"]
+    client.genie.update_space(space_id, **update_kwargs)
+    CONSOLE.success("Genie remoto restaurado")
+
+
+def delete_genie_space(space_id: str, profile: str, reason: str) -> None:
+    """Elimina (trash) un Genie remoto desplegado cuando no debe conservarse."""
+    CONSOLE.stage(reason)
+    client = WorkspaceClient(profile=profile)
+    client.genie.trash_space(space_id)
+    CONSOLE.success(f"Genie {space_id} enviado a la papelera")
 
 
 def ask_yes_no(question: str) -> bool:
@@ -635,32 +756,71 @@ def validate_and_run_job(target: str, profile: str) -> None:
     )
 
 
-def refactor_genie(json_file: Path, profile: str) -> None:
+def refactor_genie(json_file: Path, profile: str, pipeline_config: dict | None) -> list[str]:
     """Crea la Metric View recuperada y actualiza el JSON del Genie."""
     config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
-    output_directory = (
-        PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
-    )
+    output_directory = PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
     with config_file.open(encoding="utf-8") as file:
         config = json.load(file)
-    metric_view_name = build_metric_view_name(json_file)
+    metric_view_destination = resolve_metric_view_destination(pipeline_config)
     run_command(
         [
             sys.executable,
             "utils/refactorizar_genie.py",
             "--metric-view-yaml",
-            str(output_directory / "genie_proposed_metric_view_brz_dev.yml"),
+            str(METRIC_VIEW_OUTPUT_FILE),
             "--genie-json",
             str(json_file.relative_to(PROJECT_ROOT)),
             "--warehouse-id",
             config["warehouse_id"],
-            "--metric-view-name",
-            metric_view_name,
+            "--metric-view-destination",
+            metric_view_destination,
+            "--metric-view-base-name",
+            build_metric_view_name(json_file),
             "--profile",
             profile,
         ],
         "Refactorizando Genie Space",
     )
+    if METRIC_VIEW_MANIFEST_FILE.exists():
+        with METRIC_VIEW_MANIFEST_FILE.open(encoding="utf-8") as file:
+            manifest = json.load(file)
+        identifiers = manifest.get("metric_view_identifiers", [])
+        if not isinstance(identifiers, list) or not all(isinstance(item, str) for item in identifiers):
+            raise ValueError("El manifiesto de metric views es inválido")
+        return identifiers
+    return []
+
+
+def cleanup_metric_views(metric_view_identifiers: list[str], profile: str) -> None:
+    """Elimina las metric views creadas si el benchmark no supera el umbral."""
+    if not metric_view_identifiers:
+        return
+
+    config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
+    with config_file.open(encoding="utf-8") as file:
+        config = json.load(file)
+    warehouse_id = config.get("warehouse_id")
+    if not isinstance(warehouse_id, str) or not warehouse_id.strip():
+        raise ValueError("No se pudo resolver warehouse_id para eliminar metric views")
+
+    client = WorkspaceClient(profile=profile)
+    for metric_view_identifier in metric_view_identifiers:
+        parts = [part.strip() for part in metric_view_identifier.split(".") if part.strip()]
+        if len(parts) != 3:
+            raise ValueError(f"Identificador de metric view inválido: {metric_view_identifier}")
+        catalog, schema, name = parts
+        statement = f"DROP VIEW IF EXISTS `{catalog}`.`{schema}`.`{name}`"
+        response = client.statement_execution.execute_statement(
+            warehouse_id=warehouse_id,
+            statement=statement,
+            wait_timeout="50s",
+        )
+        if response.status and response.status.state and response.status.state.value != "SUCCEEDED":
+            error = response.status.error.message if response.status.error else "estado desconocido"
+            raise RuntimeError(
+                f"No se pudo eliminar la Metric View {metric_view_identifier}: {error}"
+            )
 
 
 def retrieve_assessment_outputs(profile: str) -> None:
@@ -718,6 +878,13 @@ def run_benchmarks(
     raise RuntimeError(f"Error ejecutando benchmarks: código {result.returncode}")
 
 
+def cleanup_assessment_outputs() -> None:
+    """Elimina los artefactos locales del assessment para mantener limpia la carpeta."""
+    assessment_outputs = PROJECT_ROOT / "genie_assessment" / "temp" / "assessment_outputs"
+    if assessment_outputs.exists():
+        shutil.rmtree(assessment_outputs)
+
+
 def deploy_bundle(target: str, profile: str) -> None:
     """Despliega el bundle después de superar la validación de benchmarks."""
     run_command(
@@ -734,91 +901,128 @@ def main() -> None:
         pipeline_config = load_pipeline_config(args.config)
         apply_pipeline_config(args, pipeline_config)
     CONSOLE.start(args, args.config)
-    with LocalProjectTransaction(PROJECT_ROOT, MANAGED_DIRECTORIES):
-        if args.existing_id:
-            yaml_file, json_file = generar_genie_space_existente(
-                args.existing_id, args.profile
-            )
-            if pipeline_config:
-                CONSOLE.stage("Generando config.json desde configuracion declarativa")
-                generate_config_from_import(
-                    yaml_file,
-                    json_file,
+    try:
+        with LocalProjectTransaction(MANAGED_DIRECTORIES):
+            created_metric_view_identifiers: list[str] = []
+            if args.existing_id:
+                yaml_file, json_file = generar_genie_space_existente(
+                    args.existing_id, args.profile
+                )
+                if pipeline_config:
+                    CONSOLE.stage("Generando config.json desde configuracion declarativa")
+                    generate_config_from_import(
+                        yaml_file,
+                        json_file,
+                        pipeline_config,
+                    )
+                    CONSOLE.success("Configuracion local creada con el warehouse importado")
+                else:
+                    generate_config(yaml_file, json_file)
+            else:
+                yaml_file, json_file = create_manual_genie_space(
+                    args.title,
+                    args.warehouse_id,
                     pipeline_config,
                 )
-                CONSOLE.success("Configuracion local creada con el warehouse importado")
-            else:
-                generate_config(yaml_file, json_file)
-        else:
-            yaml_file, json_file = create_manual_genie_space(
-                args.title,
-                args.warehouse_id,
-                pipeline_config,
-            )
 
-        configured_benchmarks = get_config_benchmarks(pipeline_config)
-        CONSOLE.stage("Preparando benchmarks del Genie")
-        total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
-            json_file,
-            pipeline_config,
-            configured_benchmarks,
-            require_configured=not bool(args.existing_id),
-        )
-        CONSOLE.success(
-            f"Benchmarks disponibles: {total_benchmarks} (agregados desde config: {added_benchmarks})"
-        )
-
-        should_validate = resolve_run_validation(
-            pipeline_config,
-            use_interactive_prompt=bool(args.existing_id),
-        )
-        should_refactor = resolve_refactor(
-            pipeline_config,
-            should_validate=should_validate,
-            use_interactive_prompt=bool(args.existing_id),
-        )
-
-        if should_validate:
-            validate_and_run_job(args.target, args.profile)
-            retrieve_assessment_outputs(args.profile)
-            if should_refactor:
-                refactor_genie(json_file, args.profile)
-            else:
-                CONSOLE.skipped("Refactorización omitida por configuración (refactor=false).")
-
-        else:
-            CONSOLE.skipped("Validación, assessment, recuperación y refactorización.")
-
-        if args.existing_id:
-            benchmark_passed = run_benchmarks(
-                args.existing_id,
+            configured_benchmarks = get_config_benchmarks(pipeline_config)
+            CONSOLE.stage("Preparando benchmarks del Genie")
+            total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
                 json_file,
-                args.profile,
-                args.benchmark_threshold,
-                True,
+                pipeline_config,
+                configured_benchmarks,
+                require_configured=not bool(args.existing_id),
             )
-            if not benchmark_passed:
-                CONSOLE.skipped(
-                    "Deploy cancelado porque el Genie existente no supera el umbral de benchmarks."
-                )
+            CONSOLE.success(
+                f"Benchmarks finales a desplegar: {total_benchmarks} "
+                f"(agregados desde config: {added_benchmarks})"
+            )
+
+            should_validate = resolve_run_validation(
+                pipeline_config,
+                use_interactive_prompt=bool(args.existing_id),
+            )
+            should_refactor = resolve_refactor(
+                pipeline_config,
+                should_validate=should_validate,
+                use_interactive_prompt=bool(args.existing_id),
+            )
+
+            if should_validate:
+                validate_and_run_job(args.target, args.profile)
+                retrieve_assessment_outputs(args.profile)
+                if should_refactor:
+                    created_metric_view_identifiers = refactor_genie(
+                        json_file,
+                        args.profile,
+                        pipeline_config,
+                    )
+                else:
+                    CONSOLE.skipped(
+                        "Refactorización omitida por configuración (refactor=false)."
+                    )
+
             else:
-                deploy_bundle(args.target, args.profile)
-        else:
+                CONSOLE.skipped("Validación, assessment, recuperación y refactorización.")
+
+            resource_name = get_genie_resource_name(yaml_file)
+            previous_snapshot: dict[str, Any] | None = None
+            previous_deployed_space_id: str | None = None
+
+            if args.existing_id:
+                try:
+                    previous_deployed_space_id = args.existing_id
+                    previous_snapshot = snapshot_genie_space(
+                        previous_deployed_space_id,
+                        args.profile,
+                    )
+                except RuntimeError:
+                    CONSOLE.skipped(
+                        "No se encontró un despliegue previo para snapshot; no habrá rollback automático."
+                    )
+
             deploy_bundle(args.target, args.profile)
             deployed_space_id = resolve_deployed_genie_space_id(
-                args.title,
+                resource_name,
                 args.target,
                 args.profile,
+                fallback_space_id=args.existing_id if args.existing_id else None,
             )
             benchmark_passed = run_benchmarks(
                 deployed_space_id,
                 json_file,
                 args.profile,
                 args.benchmark_threshold,
-                False,
+                bool(args.existing_id),
             )
             if not benchmark_passed:
-                print("[WARNING] El Genie nuevo fue desplegado sin superar el umbral.")
+                if args.existing_id:
+                    if (
+                        previous_snapshot is not None
+                        and previous_deployed_space_id
+                        and previous_deployed_space_id == deployed_space_id
+                    ):
+                        restore_genie_space(previous_snapshot, args.profile)
+                    elif previous_deployed_space_id and previous_deployed_space_id != deployed_space_id:
+                        delete_genie_space(
+                            deployed_space_id,
+                            args.profile,
+                            "El deploy creó un Genie nuevo; se revierte enviándolo a papelera.",
+                        )
+                    else:
+                        CONSOLE.skipped(
+                            "No fue posible revertir automáticamente el Genie remoto."
+                        )
+                else:
+                    delete_genie_space(
+                        deployed_space_id,
+                        args.profile,
+                        "El benchmark del Genie nuevo no superó el umbral; eliminando deploy remoto.",
+                    )
+                    CONSOLE.skipped("Deploy revertido para Genie nuevo por fallo de benchmark.")
+                cleanup_metric_views(created_metric_view_identifiers, args.profile)
+    finally:
+        cleanup_assessment_outputs()
 
     CONSOLE.completed()
 

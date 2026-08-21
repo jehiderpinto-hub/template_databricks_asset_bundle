@@ -1,0 +1,1193 @@
+{
+  "benchmarks": {
+    "questions": [
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT\r\n",
+              "        COD_RESPONSABLE_DE_PAGO,\r\n",
+              "        RESPONSABLE_DE_PAGO,\r\n",
+              "        SUM(TONELADAS) AS toneladas_total\r\n",
+              "      FROM slv_dev.star_generico.facturacion_hnd\r\n",
+              "      WHERE ANIO = YEAR(CURRENT_DATE())\r\n",
+              "        AND MES = MONTH(CURRENT_DATE())\r\n",
+              "      GROUP BY COD_RESPONSABLE_DE_PAGO, RESPONSABLE_DE_PAGO\r\n",
+              "      ORDER BY toneladas_total DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "evaluation_note": [
+          "Debe responder con agregación correcta y semántica equivalente al SQL esperado: usar COUNT(DISTINCT order_id), agrupar por year, incluir solo datos válidos (sin nulos críticos) y ordenar por year ascendente. Se acepta diferencia de alias o formato SQL si el resultado final es equivalente."
+        ],
+        "id": "01f19cf2d87a163bbca7967962a27f5d",
+        "question": [
+          "¿Cuál es el volumen total en toneladas por cliente en el mes actual?"
+        ]
+      },
+      {
+        "question": [
+          "¿Cuántos clientes tipo Padre existen en el maestro de clientes?"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT\n  COUNT(*) AS total_clientes_padre\nFROM gld_star_prod.hon.maestro_clientes\nWHERE TIPO_DE_CODIGO = 'Padre'\n"
+            ]
+          }
+        ],
+        "evaluation_note": [
+          "Debe devolver una sola fila con una sola columna numérica llamada total_clientes_padre, contando registros de gld_star_prod.hon.maestro_clientes donde TIPO_DE_CODIGO sea 'Padre'."
+        ],
+        "id": "475037db183c406d9dcf2a73bd333d38"
+      }
+    ]
+  },
+  "config": {
+    "sample_questions": [
+      {
+        "id": "01f19cf093f2130e8e0fdb1e308da81b",
+        "question": [
+          "What tables are there and how are they connected? Give me a short summary."
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "column_configs": [
+          {
+            "column_name": "Anio",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Asesor",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "AsesorComercial",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "AuditFechaCarga",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CantidadVendidaFacturada",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcCostoDirecto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcCostoFleteTraslado",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcCostoIndirecto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcCostoMtto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcCostoNiif16",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcFlete",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CcOtrosCostos",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Centro",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CiudadDestinatario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Cliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CodMaterial",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CondicionesDeEnvio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DepartamentoDestinatario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Descuentos",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ERatePromMth",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "EmpaqueDeProducto",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FCliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FRetira",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FTransferencia",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FleteACliente",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FleteDeTransferencia",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FleteTransfCe",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GastosDeAdministracion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GastosDeDistribucion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GastosDeVenta",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GtosDistribucionCe",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "IdentifSAsig",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "IngresoFlete",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "IngresoFob",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "IngresoFobPpto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "IngresosNetos",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "LineaDeProducto",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Material",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Negocio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NoMes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NumAsesor",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NumCentro",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NumCliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "POrigenOriginal",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Per",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PeriodoFecha",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PlantaOrigen",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SegmentoDeCliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SubsegmentoDestinatario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TipoDeProducto",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TotalCashCostDeMercanciaVendida",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TpVenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VolumenPpto",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_dev.hon.vw_rentabilidad_honduras"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "ASESOR",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CARTERA",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_RESPONSABLE_DE_PAGO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CONDICIONES_DE_PAGO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DENOM_OFICINA_DE_VENTAS",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DEPARTAMENTO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DE_1_A_30",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DIAS_DSO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "De_181_mas",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "De_31_a_40P",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "De_41_a_60",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "De_61_a_90",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "De_91_a_180",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GERENTE",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "INGRESO_MES_ANTERIOR",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NOMBRE",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PERIODO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PROYECCION",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SUBSEGMENTO_CLIENTES",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TIPO_DE_NEGOCIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VENCIDO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VENTA_MES_ACTUAL",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.detalle_dso_asesor"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "CLIENTE",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DENOM_GRUPO_DE_CLIENTES_1",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DENOM_OFICINA_DE_VENTAS",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DEPARTAMENTO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NOMBRE",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "NOMBRE_DEL_RESPONSABLE",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SEGMENTO_CLIENTES",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SUBSEGMENTO_CLIENTES",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TIPO_DE_CODIGO",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.maestro_clientes"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "AÑO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Cantidad_facturada",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Cantidad_facturada1",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Carta_porte",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Centro",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Centro_distribucion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Clase_factura",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Condiciones_de_pago",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Denomin",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Denominacion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Denominacion1",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Destinatario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Doc_venta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Factura",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Fecha_factura",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Impuesto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "MES",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Material",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Motivo_pedido",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Neto",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Nombre_pagador",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Nombre_responsable",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Oficina_ventas",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Org_ventas",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Pedido",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Precio_Unitario",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Refer_pago",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Responsable_pago",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Texto_breve_de_material",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Valor_FOB",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Valor_flete",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.notas_credito_descuentos"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "asesor_comercial",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "presupuesto_anual_hnl",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "presupuesto_mensual_hnl",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.presupuesto_apoyos_mercadeo"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "apoyos_clientes_creado_por",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "apoyos_clientes_fecha_de_creacion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "apoyos_clientes_ultima_modificacion_por",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "asignado_a",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "codigo_cliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "consecutivo_apoyos_clientes",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "descripcion",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "detalle_otro_apoyo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "estatus",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "fecha_de_implementacion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "grupo_de_clientes_segmento",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "inversion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "motivo_de_rechazo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "nombre_de_la_cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "objetivo_del_apoyo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "propietario_de_la_cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "tipo_de_apoyo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.vw_apoyos_clientes_por_mes_hon"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "Asunto",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Codigo_Cliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Departamento",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Direccion",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Estado_Agenda_Visitas",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Fecha_Creacion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Grupo_Clientes_Segmento",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Grupo_Precios_SubSegmento",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Id_Agenda_Visita",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Id_Chequeo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Id_Cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Id_Evento_Chequeo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Latitud",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Longitud",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Marca",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Municipio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Negocio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Nombre_Chequeo_PrecioInventario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Nombre_Propietario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Oficina_Ventas",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Precio_Compra",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Precio_Flete",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Precio_Venta",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Proveedor",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Tipo_Negocio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "Tipo_Registro_Cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.vw_chequeo_precio_inventario_hon"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "chequeo_precio_inventario_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "codigo_cliente",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "codigo_responsable_pago",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "creado_por_nombre_completo",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "departamento_honduras_nombre",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "fecha_creacion",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "localizacion_latitud",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "localizacion_longitud",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "marca",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "modalidad_flete",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "municipio_honduras_nombre",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "nombre_chequeo_precio_inventario",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "nombre_cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "otro_proveedor",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "precio_compra",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "precio_flete",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "precio_venta",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "proveedor",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "tipo_negocio",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "tipo_registro_cuenta",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "gld_star_prod.hon.vw_visitas_geolocalizacion_chequeo_precio_hon"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "ALIAS_MATERIAL",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ANIO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ASESOR_COMERCIAL",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CIUDAD",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "CIUDAD_DESTINATARIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_ASESOR_COMERCIAL",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_DESTINATARIO_MERCANCIA",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_MATERIAL",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_PERIODO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_PLANTA_LOGISTICA",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_RESPONSABLE_DE_PAGO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_SOLICITANTE",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "COD_TIPO_DE_NEGOCIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DEPARTAMENTO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DEPARTAMENTO_DESTINATARIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DESTINATARIO_MERCANCIA",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DIAS_FALTANTES",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "DIAS_TRANSCURRIDOS",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ENVIO/RETIRA",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "FECHA_FACTURA",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "GRUPO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "MATERIAL",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "MES",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "MICROMERCADO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "MICROMERCADO_DESTINATARIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PLANTA_LOGISTICA",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PRECIO_PROMEDIO_REAL",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PRESENTACION",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "PROYECCION",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "RESPONSABLE_DE_PAGO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SEGMENTO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SOLICITANTE",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "SUBSEGMENTO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TASA_CAMBIO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TIPO_DE_NEGOCIO",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "TONELADAS",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ULTIMO_DIA",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VALOR_FLETE",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VALOR_NETO_PRODUCTO",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "VALOR_NETO_USD",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "slv_dev.star_generico.facturacion_hnd"
+      }
+    ]
+  },
+  "instructions": {
+    "sql_snippets": {
+      "filters": [
+        {
+          "display_name": "current month",
+          "id": "01f19cf52b5b18079574e7e1af530fe0",
+          "instruction": [
+            "WHEN_TO_USE: Use to filter results to the current calendar month and year, matching business user queries referencing 'mes actual', 'this month', or similar terms. SCOPE_TABLES: slv_dev.star_generico.facturacion_hnd (for periodic metrics, customer volume, etc). TIMEFRAME_HINT: Calendar month/year (not fiscal). RISK_IF_MISUSED: If applied for other periods, may restrict unnecessarily; don't use unless question asks for 'current' or 'this month'."
+          ],
+          "sql": [
+            "facturacion_hnd.ANIO = YEAR(CURRENT_DATE()) AND facturacion_hnd.MES = MONTH(CURRENT_DATE())"
+          ]
+        }
+      ],
+      "measures": [
+        {
+          "display_name": "Precio USD",
+          "id": "01f19cf093d51a29a548dc53b3937c16",
+          "sql": [
+            "facturacion_hnd.VALOR_NETO_PRODUCTO / facturacion_hnd.TONELADAS"
+          ],
+          "synonyms": [
+            "Precio FOB"
+          ]
+        },
+        {
+          "alias": "total_volume_by_cliente",
+          "display_name": "volumen total en toneladas por cliente",
+          "id": "01f19cf798fa1ec5acaf9f8687fc318d",
+          "instruction": [
+            "WHEN_TO_USE: Use when user asks for volume metrics (e.g. 'volumen', 'toneladas') by customer, client, or payee in the current month. SCOPE_TABLES: slv_dev.star_generico.facturacion_hnd. RISK_IF_MISUSED: Avoid grouping by DESTINATARIO_MERCANCIA or MICROMERCADO unless user asks for those roles, as COD_RESPONSABLE_DE_PAGO/RESPONSABLE_DE_PAGO are the correct customer/entity identifiers used for billing and aggregation."
+          ],
+          "sql": [
+            "SUM(facturacion_hnd.TONELADAS)"
+          ]
+        }
+      ]
+    },
+    "text_instructions": [
+      {
+        "content": [
+          "# Genie Space — Analista Ejecutivo Senior | Cementos Argos Honduras\r\n",
+          "\r\n",
+          "Este Genie Space configura un **analista ejecutivo senior para Cementos Argos Honduras**, enfocado en **rentabilidad, pricing, ventas e inteligencia de mercado**. Su objetivo principal es transformar datos transaccionales en **explicaciones causa-efecto y recomendaciones de negocio**.\r\n",
+          "\r\n",
+          "## Rol y Jerarquía de Análisis\r\n",
+          "\r\n",
+          "- **Obligación analítica:** Explicar qué ocurre, por qué ocurre, qué variables (clientes, códigos, zonas) lo originan, cuál es su impacto financiero, cuáles son los riesgos y qué acciones comerciales se recomiendan.\r\n",
+          "- **Orden de filtrado:** Periodo, Código, Cliente, Material, Producto, Presentación, Canal, Asesor, Zona, Ubicación, Moneda y Unidad.\r\n",
+          "- **Transparencia:** Debe indicar siempre los **filtros y las fuentes utilizadas** al inicio de cada respuesta.\r\n",
+          "\r\n",
+          "## Reglas de Negocio Comercial\r\n",
+          "\r\n",
+          "- **Volumen:** La unidad oficial es la **Tonelada Métrica**. Los reportes también deben incluir sus equivalentes en **sacos** y **rastras** cuando sea comercialmente útil.\r\n",
+          "- **Ingresos y precios:** El ingreso real equivale exclusivamente al **Ingreso FOB**. El flete nunca se suma al ingreso real.\r\n",
+          "- **Precios consolidados:** Todos los precios consolidados deben calcularse **ponderados por volumen**. Está prohibido utilizar promedios simples.\r\n",
+          "- **Moneda:** Los valores originalmente expresados en lempiras se convierten a dólares dividiendo por la **tasa de cambio del mes**. El micromercado de exportación ya se encuentra expresado en dólares.\r\n",
+          "- **Descuentos:** Se determinan comparando el **precio ponderado del mes analizado** contra el **precio ponderado del mes calendario inmediatamente anterior**, utilizando el mismo código exacto.\r\n",
+          "\r\n",
+          "## Gestión de Clientes y Jerarquía\r\n",
+          "\r\n",
+          "- **Cartera activa:** El **Maestro de Clientes** determina el total de cuentas activas. La tabla de facturación únicamente registra las transacciones realizadas.\r\n",
+          "- **Conteo por código Padre:** La métrica de clientes se mide únicamente a nivel de **código Padre**.\r\n",
+          "- **Definición de comprador:** Un cliente se considera comprador cuando su código Padre o cualquiera de sus códigos Hijo/Destino registra ventas durante el periodo analizado.\r\n",
+          "\r\n",
+          "## Separación de Mercado y Fuentes\r\n",
+          "\r\n",
+          "- **Mercados:** Toda consulta por zona que involucre **volumen, precio o ingreso** debe desglosarse por separado entre:\r\n",
+          "  - Mercado Nacional\r\n",
+          "  - Mercado de Exportación\r\n",
+          "\r\n",
+          "- **Apoyos comerciales:** Realizar seguimiento del **presupuesto, ejecución, estado de entrega y retorno comercial** sobre los clientes apalancados en la vista de apoyos.\r\n",
+          "\r\n",
+          "- **Monitoreo de competencia:** Comparar los **precios observados en el mercado**, las **brechas de precio frente a competidores** y los **inventarios en punto de venta**.\r\n",
+          "\r\n",
+          "- **Geolocalización:** Analizar el **control de cobertura comercial, rutas de asesores, efectividad de visitas y validación de coordenadas**."
+        ],
+        "id": "01f19cf093d31a84b54b8f56eea93967"
+      }
+    ]
+  },
+  "version": 2
+}

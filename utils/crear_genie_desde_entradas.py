@@ -42,7 +42,7 @@ def validate_inputs(title: str, sources: list[str], questions: list[str], wareho
         )
 
 
-def build_genie_json(sources: list[str], questions: list[str]) -> dict[str, Any]:
+def build_genie_json(sources: list[str]) -> dict[str, Any]:
     """Construye un Genie Space base con fuentes y preguntas de negocio."""
     genie_json = {
         "version": 2,
@@ -60,7 +60,7 @@ def build_genie_json(sources: list[str], questions: list[str]) -> dict[str, Any]
     return genie_json
 
 
-def build_resource_yaml(title: str, warehouse_id: str, json_name: str) -> dict[str, Any]:
+def build_resource_yaml(title: str, json_name: str) -> dict[str, Any]:
     """Construye el recurso YAML que referencia el JSON del Genie Space."""
     return {
         "resources": {
@@ -110,11 +110,11 @@ def create_files(
     config_file.parent.mkdir(parents=True, exist_ok=True)
 
     with json_file.open("w", encoding="utf-8") as file:
-        json.dump(build_genie_json(sources, questions), file, ensure_ascii=False, indent=2)
+        json.dump(build_genie_json(sources), file, ensure_ascii=False, indent=2)
         file.write("\n")
     with yaml_file.open("w", encoding="utf-8") as file:
         yaml.safe_dump(
-            build_resource_yaml(title, warehouse_id, json_name),
+            build_resource_yaml(title, json_name),
             file,
             allow_unicode=True,
             sort_keys=False,

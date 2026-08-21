@@ -8,9 +8,8 @@ from pathlib import Path
 class LocalProjectTransaction:
     """Guarda y restaura directorios locales modificados por el pipeline."""
 
-    def __init__(self, project_root: Path, managed_directories: list[Path]) -> None:
+    def __init__(self, managed_directories: list[Path]) -> None:
         """Inicializa una transacción para los directorios administrados."""
-        self.project_root = project_root
         self.managed_directories = managed_directories
         self._temporary_directory: tempfile.TemporaryDirectory[str] | None = None
         self._snapshot_directory: Path | None = None
@@ -41,8 +40,9 @@ class LocalProjectTransaction:
             if snapshot.exists():
                 shutil.copytree(snapshot, directory)
 
-    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+    def __exit__(self, exc_type, _exc_value, _traceback) -> bool:
         """Restaura solo si falla el flujo y libera el snapshot temporal."""
+        del _exc_value, _traceback
         try:
             if exc_type is not None:
                 self.restore()

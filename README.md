@@ -81,6 +81,12 @@ Reglas clave:
   - Siempre se ejecutan.
   - En Genie existente se suman benchmarks importados + benchmarks del config.
   - En Genie nuevo deben venir en el config.
+  - En el YAML usa el formato completo de Genie: `benchmarks.questions`.
+- Las claves de `instructions` definidas en el YAML sustituyen la misma clave del JSON importado.
+- Las metric views propuestas se consolidan en un solo YAML y se crean en el destino `catalog.schema` definido en `metric_view_destination`.
+- Si el benchmark falla, también se eliminan las metric views creadas durante la refactorización.
+- El archivo local consolidado se guarda como [genie_assessment/temp/assessment_outputs/genie_proposed_metric_view.yml](genie_assessment/temp/assessment_outputs/genie_proposed_metric_view.yml).
+- Agrega en el YAML una clave `metric_view_destination: "catalog.schema"` para crear las metric views.
 - IDs vacíos (`id: ""`) en bloques seteables se autogeneran durante el pipeline.
 
 ---
@@ -92,13 +98,13 @@ Reglas clave:
 - El pipeline importa definición desde `existing_id`.
 - Usa `sources` desde la definición existente.
 - Requiere `business_questions` en config.
-- Si benchmark no supera umbral: **cancela deploy**.
+- Hace deploy, ejecuta benchmark remoto y, si no supera umbral, **restaura el estado remoto previo**.
 
 ### B. Genie nuevo
 
 - Requiere `sources`, `warehouse_id`, `business_questions` y `benchmarks`.
-- Hace deploy y luego benchmark.
-- Si benchmark no supera umbral: muestra warning en consola.
+- Hace deploy y luego benchmark remoto.
+- Si benchmark no supera umbral: **revierte el deploy enviando el Genie a papelera**.
 
 ---
 
@@ -120,6 +126,7 @@ Reporte de benchmark:
 - **No encuentra Genie correcto**: validar que `existing_id` corresponda al space correcto en UI.
 - **No pasa benchmark**: revisar el JSON de resultados y el `benchmark_threshold`.
 - **Permisos insuficientes**: el usuario debe poder leer/editar/evaluar espacios Genie.
+- **Error `Unknown field 'measures'`**: el pipeline ahora elimina automáticamente `instructions.measures` y `instructions.sql_snippets.measures` antes del deploy para compatibilidad con APIs que no soportan esos bloques.
 
 ---
 

@@ -24,6 +24,14 @@ def _extract_sql_from_eval_response(responses: list[Any] | None) -> str:
     return ""
 
 
+def _normalize_signature_text(value: str) -> str:
+    return " ".join(value.strip().lower().split())
+
+
+def _benchmark_signature(question: str, expected_sql: str) -> tuple[str, str]:
+    return (_normalize_signature_text(question), _normalize_signature_text(expected_sql))
+
+
 def extract_benchmarks(genie_json: Path) -> list[dict[str, str]]:
     """Extrae benchmarks del JSON del Genie."""
     genie_space = read_json_file(genie_json)
@@ -32,6 +40,7 @@ def extract_benchmarks(genie_json: Path) -> list[dict[str, str]]:
         raise ValueError("benchmarks.questions debe ser una lista")
 
     extracted: list[dict[str, str]] = []
+    seen_signatures: set[tuple[str, str]] = set()
     for benchmark in questions:
         if not isinstance(benchmark, dict):
             continue
@@ -46,6 +55,13 @@ def extract_benchmarks(genie_json: Path) -> list[dict[str, str]]:
             if expected_sql:
                 break
         if question and expected_sql:
+            signature = (
+                _normalize_signature_text(question),
+                _normalize_signature_text(expected_sql),
+            )
+            if signature in seen_signatures:
+                continue
+            seen_signatures.add(signature)
             extracted.append(
                 {
                     "id": str(benchmark.get("id", "")).strip(),
@@ -81,55 +97,78 @@ def _wait_for_eval_run(client: WorkspaceClient, space_id: str, eval_run_id: str)
     raise RuntimeError("La evaluación del Genie no terminó a tiempo")
 
 
-def _get_remote_benchmark_ids(client: WorkspaceClient, genie_space_id: str) -> set[str]:
-    """Devuelve los IDs de benchmark que existen actualmente en el espacio remoto."""
+def _get_remote_benchmark_signatures(
+    client: WorkspaceClient, genie_space_id: str
+) -> dict[str, tuple[str, str]]:
+    """Devuelve firma (question, sql) de benchmarks del espacio remoto por ID."""
     space = client.genie.get_space(genie_space_id, include_serialized_space=True)
     serialized_space = getattr(space, "serialized_space", None)
     if not serialized_space:
-        return set()
+        return {}
     try:
         parsed = json.loads(serialized_space)
     except json.JSONDecodeError:
-        return set()
+        return {}
 
     questions = parsed.get("benchmarks", {}).get("questions", [])
     if not isinstance(questions, list):
-        return set()
-    ids: set[str] = set()
+        return {}
+    signatures: dict[str, tuple[str, str]] = {}
     for question in questions:
         if not isinstance(question, dict):
             continue
         benchmark_id = str(question.get("id", "")).strip()
-        if benchmark_id:
-            ids.add(benchmark_id)
-    return ids
+        if not benchmark_id:
+            continue
+        question_values = question.get("question", [])
+        answers = question.get("answer", [])
+        question_text = question_values[0].strip() if question_values else ""
+        expected_sql = ""
+        for answer in answers:
+            if answer.get("format") != "SQL":
+                continue
+            expected_sql = "".join(answer.get("content", [])).strip()
+            if expected_sql:
+                break
+        signatures[benchmark_id] = _benchmark_signature(question_text, expected_sql)
+    return signatures
 
 
 def _resolve_eval_space_id(
     client: WorkspaceClient,
     base_space_id: str,
-    benchmark_ids: list[str],
+    benchmarks_with_id: list[dict[str, str]],
     genie_json_path: Path,
 ) -> tuple[str, bool]:
-    """Usa el espacio remoto o crea uno temporal si faltan IDs de benchmark."""
-    remote_ids = _get_remote_benchmark_ids(client, base_space_id)
-    if set(benchmark_ids).issubset(remote_ids):
-        return base_space_id, False
-
-    base_space = client.genie.get_space(base_space_id)
-    warehouse_id = base_space.warehouse_id
-    if not warehouse_id:
-        raise ValueError("El Genie no tiene warehouse_id para crear un espacio temporal")
-
-    serialized_space = genie_json_path.read_text(encoding="utf-8")
-    temp_space = client.genie.create_space(
-        warehouse_id=warehouse_id,
-        serialized_space=serialized_space,
-        title=f"{(base_space.title or 'genie')}_bench_eval_{int(time.time())}",
-        parent_path=base_space.parent_path,
-        description="Espacio temporal para evaluación de benchmarks del pipeline",
-    )
-    return temp_space.space_id, True
+    """Resuelve el espacio de evaluación en remoto (sin espacios temporales)."""
+    _ = genie_json_path
+    remote_signatures = _get_remote_benchmark_signatures(client, base_space_id)
+    local_ids = [benchmark["id"] for benchmark in benchmarks_with_id if benchmark.get("id")]
+    all_present = set(local_ids).issubset(set(remote_signatures.keys()))
+    same_content = False
+    if all_present:
+        same_content = True
+        for benchmark in benchmarks_with_id:
+            benchmark_id = benchmark["id"]
+            remote_signature = remote_signatures.get(benchmark_id)
+            local_signature = _benchmark_signature(
+                benchmark.get("question", ""),
+                benchmark.get("expected_sql", ""),
+            )
+            if remote_signature != local_signature:
+                same_content = False
+                break
+    if not all_present:
+        raise RuntimeError(
+            "Los benchmarks a evaluar no existen en el Genie remoto desplegado. "
+            "Asegura deploy exitoso antes de ejecutar benchmarks."
+        )
+    if not same_content:
+        print(
+            "[WARNING] El benchmark local difiere del remoto desplegado; "
+            "se evaluará el benchmark remoto por consistencia del entorno."
+        )
+    return base_space_id, False
 
 
 def _evaluate_registered_benchmarks(
@@ -144,10 +183,10 @@ def _evaluate_registered_benchmarks(
         return []
 
     benchmark_lookup = {benchmark["id"]: benchmark for benchmark in benchmarks_with_id}
-    eval_space_id, created_temp_space = _resolve_eval_space_id(
+    eval_space_id, _ = _resolve_eval_space_id(
         client,
         genie_space_id,
-        benchmark_ids,
+        benchmarks_with_id,
         genie_json_path,
     )
     run = client.genie.genie_create_eval_run(
@@ -155,43 +194,39 @@ def _evaluate_registered_benchmarks(
         benchmark_question_ids=benchmark_ids,
     )
     eval_run_id = run.eval_run_id
-    try:
-        _wait_for_eval_run(client, eval_space_id, eval_run_id)
-        eval_results = client.genie.genie_list_eval_results(
+    _wait_for_eval_run(client, eval_space_id, eval_run_id)
+    eval_results = client.genie.genie_list_eval_results(
+        space_id=eval_space_id,
+        eval_run_id=eval_run_id,
+    ).eval_results or []
+
+    results: list[dict[str, Any]] = []
+    for eval_result in eval_results:
+        benchmark_id = eval_result.benchmark_question_id
+        benchmark = benchmark_lookup.get(benchmark_id)
+        if not benchmark:
+            continue
+        detail = client.genie.genie_get_eval_result_details(
             space_id=eval_space_id,
             eval_run_id=eval_run_id,
-        ).eval_results or []
-
-        results: list[dict[str, Any]] = []
-        for eval_result in eval_results:
-            benchmark_id = eval_result.benchmark_question_id
-            benchmark = benchmark_lookup.get(benchmark_id)
-            if not benchmark:
-                continue
-            detail = client.genie.genie_get_eval_result_details(
-                space_id=eval_space_id,
-                eval_run_id=eval_run_id,
-                result_id=eval_result.result_id,
-            )
-            assessment = getattr(detail, "assessment", None)
-            passed = assessment == GenieEvalAssessment.GOOD
-            results.append(
-                {
-                    "id": benchmark_id,
-                    "question": benchmark["question"],
-                    "expected_sql": benchmark["expected_sql"],
-                    "actual_sql": _extract_sql_from_eval_response(
-                        getattr(detail, "actual_response", None)
-                    ),
-                    "score": 1.0 if passed else 0.0,
-                    "passed": passed,
-                    "evaluation_mode": "official_genie",
-                }
-            )
-        return results
-    finally:
-        if created_temp_space:
-            client.genie.trash_space(eval_space_id)
+            result_id=eval_result.result_id,
+        )
+        assessment = getattr(detail, "assessment", None)
+        passed = assessment == GenieEvalAssessment.GOOD
+        results.append(
+            {
+                "id": benchmark_id,
+                "question": benchmark["question"],
+                "expected_sql": benchmark["expected_sql"],
+                "actual_sql": _extract_sql_from_eval_response(
+                    getattr(detail, "actual_response", None)
+                ),
+                "score": 1.0 if passed else 0.0,
+                "passed": passed,
+                "evaluation_mode": "official_genie",
+            }
+        )
+    return results
 
 
 def evaluate_benchmarks(
@@ -227,6 +262,7 @@ def write_report(results: list[dict[str, Any]], output_file: Path) -> float:
     report = {
         "average_score": round(pass_rate, 4),
         "benchmarks_total": len(results),
+        "questions_evaluated": len(results),
         "passed_benchmarks": passed_count,
         "results": results,
     }
@@ -272,6 +308,7 @@ def main() -> None:
         args.genie_json,
     )
     average_score = write_report(results, args.report)
+    print(f"Preguntas evaluadas: {len(results)}")
     print(f"Benchmark score: {average_score:.4f} / threshold: {args.threshold:.4f}")
 
     if average_score < args.threshold:
