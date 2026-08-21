@@ -43,12 +43,6 @@ def _sanitize_identifier(value: str, default: str = "item") -> str:
     return sanitized
 
 
-def _ascii_fold_text(value: str) -> str:
-    """Convierte texto libre a ASCII conservando su legibilidad."""
-    normalized = unicodedata.normalize("NFKD", value)
-    return normalized.encode("ascii", "ignore").decode("ascii")
-
-
 def build_metric_view_name(base_name: str | Path | None, proposal: dict[str, Any]) -> str:
     """Genera un nombre estable para una metric view propuesta."""
     candidate = ""
@@ -127,29 +121,6 @@ def _sanitize_metric_view_payload(proposal: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item.get("alias"), str) and item["alias"].strip():
                 item["alias"] = _sanitize_identifier(str(item["alias"]))
 
-    text_fields = {
-        "comment",
-        "description",
-        "display_name",
-        "instruction",
-        "usage_guidance",
-        "question",
-        "synonyms",
-        "title",
-    }
-
-    def _sanitize_text_nodes(node: Any, parent_key: str | None = None) -> Any:
-        if isinstance(node, dict):
-            for key, value in node.items():
-                node[key] = _sanitize_text_nodes(value, key)
-            return node
-        if isinstance(node, list):
-            return [_sanitize_text_nodes(item, parent_key) for item in node]
-        if isinstance(node, str) and parent_key in text_fields:
-            return _ascii_fold_text(node)
-        return node
-
-    sanitized = _sanitize_text_nodes(sanitized)
     return sanitized
 
 

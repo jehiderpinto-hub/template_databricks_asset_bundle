@@ -619,6 +619,14 @@ def restore_genie_space(
     CONSOLE.success("Genie remoto restaurado")
 
 
+def discard_deployed_genie_space(space_id: str, profile: str, reason: str) -> None:
+    """Descarta el Genie desplegado por el bundle sin tocar el Genie original."""
+    CONSOLE.stage(reason)
+    client = WorkspaceClient(profile=profile)
+    client.genie.trash_space(space_id)
+    CONSOLE.success(f"Genie desplegado {space_id} enviado a la papelera")
+
+
 def delete_genie_space(space_id: str, profile: str, reason: str) -> None:
     """Elimina (trash) un Genie remoto desplegado cuando no debe conservarse."""
     CONSOLE.stage(reason)
@@ -1004,21 +1012,15 @@ def main() -> None:
         if not benchmark_passed:
             if revert_on_failed_benchmark:
                 if args.existing_id:
-                    if (
-                        previous_snapshot is not None
-                        and previous_deployed_space_id
-                        and previous_deployed_space_id == deployed_space_id
-                    ):
-                        restore_genie_space(previous_snapshot, args.profile)
-                    elif previous_snapshot is not None and previous_deployed_space_id:
-                        restore_genie_space(
-                            previous_snapshot,
+                    if deployed_space_id:
+                        discard_deployed_genie_space(
+                            deployed_space_id,
                             args.profile,
-                            target_space_id=deployed_space_id,
+                            "El benchmark del Genie existente no superó el umbral; descartando el despliegue temporal.",
                         )
                     else:
                         CONSOLE.skipped(
-                            "No fue posible revertir automáticamente el Genie remoto."
+                            "No fue posible identificar el despliegue temporal para descartarlo."
                         )
                 else:
                     delete_genie_space(

@@ -33,7 +33,7 @@
         "evaluation_note": [
           "Debe devolver una sola fila con una sola columna numérica llamada total_clientes_padre, contando registros de gld_star_prod.hon.maestro_clientes donde TIPO_DE_CODIGO sea 'Padre'."
         ],
-        "id": "35b7fc527fc24860b56526847462822e"
+        "id": "52c5a19d60b448fca7685e20afbb0316"
       }
     ]
   },
@@ -50,15 +50,7 @@
   "data_sources": {
     "tables": [
       {
-        "identifier": "brz_dev.default.mv_fact_sales_demo_genie",
-        "column_configs": []
-      },
-      {
         "identifier": "brz_dev.default.mv_facturacion_hnd",
-        "column_configs": []
-      },
-      {
-        "identifier": "brz_dev.default.mv_facturacion_hnd_2",
         "column_configs": []
       },
       {
@@ -4584,7 +4576,7 @@
     ],
     "example_question_sqls": [
       {
-        "id": "a63f43d7fda1460186fe7bf477c0eb92",
+        "id": "f053e1e63bf848c4beb54a4d4d5a54d8",
         "question": [
           "Pregunta de ejemplo"
         ],
