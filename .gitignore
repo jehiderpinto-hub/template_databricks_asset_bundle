@@ -13,6 +13,3 @@ scratch/**
 # Genie assessment outputs are generated artifacts, not bundle definitions.
 genie_assessment/temp/
 # El job desplegado consume esta configuración desde el Workspace.
-
-# Local pipeline configuration may contain environment-specific values.
-pipeline_config.yml

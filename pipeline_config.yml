@@ -1,0 +1,187 @@
+# =========================
+# PIPELINE CONFIG TEMPLATE
+# =========================
+#
+# Reglas clave:
+# - business_questions: OBLIGATORIO siempre.
+# - existing_id definido  -> Genie existente (sources se toma del Genie importado).
+# - existing_id vacío     -> Genie nuevo (sources y warehouse_id son obligatorios).
+# - run_validate/run_validation=false -> no validación, no assessment, no refactor.
+# - benchmarks:
+#     * se suman a los ya existentes del Genie.
+#     * para Genie nuevo son obligatorios.
+# - instructions:
+#     * cualquier key definida aquí reemplaza la misma key del JSON importado.
+# - metric_view_destination:
+#     * destino catalog.schema donde se crean las metric views.
+#
+# -------------------------
+# Datos generales
+# -------------------------
+profile: dev                     # Opcional. Default: dev
+target: dev                      # Opcional. Default: dev
+existing_id: "01f19cf093d21793ba0982f1cfd291b1"  # Opcional. Si existe, usa Genie existente.
+#title: "demo_genie_ui"           # Opcional. Usado al crear Genie nuevo.
+warehouse_id: "6fadc34945c1c177"                 # Obligatorio si existing_id está vacío.
+benchmark_threshold: 0.4        # Opcional. Rango 0..1. Default: 0.8
+metric_view_destination: "brz_dev.default"  # Obligatorio si se ejecuta refactorización con metric views
+revert_on_failed_benchmark: true  # Si false, conserva los cambios aunque el benchmark no pase
+
+# -------------------------
+# Control de flujo
+# -------------------------
+run_validate: true               # Recomendado (alias soportado: run_validation)
+refactor: true                   # Solo aplica cuando run_validate=true
+
+# -------------------------
+# Config para assessment
+# -------------------------
+business_questions:              # OBLIGATORIO siempre
+  - "¿Volumen de ventas en ton e ingreso FOB en USD por zona (mes actual)?"
+  - "¿Qué clientes Padre activos no registran compras en el mes en curso?"
+  - "¿Precio promedio ponderado en USD/ton por cliente/producto vs mes anterior?"
+  - "¿Apoyos comerciales aprobados, ejecutados o entregados pendientes por asesor?"
+  - "¿Brecha de precio porcentual entre Argos y la competencia por zona o PDV?"
+  - "¿Puntos de venta con caída en volumen o sin visitas recientes de geolocalización?"
+  - "¿Margen de rentabilidad y detalle de DSO por cliente o departamento?"
+  - "¿Presupuesto vs ejecución de apoyos de mercadeo y notas de crédito de descuentos?"
+
+
+sources:                         # Obligatorio para Genie nuevo (catalog.schema.table)
+  - "gld_star_prod.hon.vw_apoyos_clientes_por_mes_hon"
+  - "gld_star_prod.hon.vw_chequeo_precio_inventario_hon"
+  - "gld_star_prod.hon.vw_visitas_geolocalizacion_chequeo_precio_hon"
+  - "gld_star_prod.hon.detalle_dso_asesor"
+  - "gld_star_prod.hon.notas_credito_descuentos"
+  - "gld_star_prod.hon.presupuesto_apoyos_mercadeo"
+  - "gld_star_prod.hon.maestro_clientes"
+  - "gld_star_dev.hon.vw_rentabilidad_honduras"
+  - "slv_dev.star_generico.facturacion_hnd"
+
+# -------------------------
+# Benchmarks
+# -------------------------
+# Para Genie existente: se agregan a los benchmarks importados del Genie.
+# Para Genie nuevo: obligatorios.
+benchmarks:
+  questions:
+    - id: ""
+      question:
+        - "¿Cuántos clientes tipo Padre existen en el maestro de clientes?"
+      answer:
+        - format: "SQL"
+          content:
+            - |
+              SELECT
+                COUNT(*) AS total_clientes_padre
+              FROM gld_star_prod.hon.maestro_clientes
+              WHERE TIPO_DE_CODIGO = 'Padre'
+      evaluation_note:
+        - "Debe devolver una sola fila con una sola columna numérica llamada total_clientes_padre, contando registros de gld_star_prod.hon.maestro_clientes donde TIPO_DE_CODIGO sea 'Padre'."
+
+  # Formato completo Genie: agrega más preguntas dentro de questions.
+  # Si un benchmark viene con id vacío o ausente, el pipeline lo autogenera.
+
+# -------------------------
+# Overrides avanzados del JSON Genie
+# -------------------------
+# Se fusionan con la definición base importada/creada.
+# Úsalos solo si necesitas extender/ajustar el payload del space.
+# Cualquier campo "id" vacío dentro de estos bloques se autogenera en el pipeline.
+
+# version: 2
+#
+# # También puedes definir benchmarks con el formato completo Genie:
+# # benchmarks:
+# #   questions:
+# #     - id: ""  # opcional; si viene vacío/ausente se autogenera
+# #       question:
+# #         - "Pregunta de benchmark"
+# #       answer:
+# #         - format: "SQL"
+# #           content:
+# #             - "SELECT ..."
+#
+# data_sources:
+#   tables:
+#     - identifier: "brz_dev.default.mv_demo_genie_ui"
+#       description:
+#         - "Vista de métricas para Genie"
+#       column_configs:
+#         - column_name: "Ventas Netas"
+#           description:
+#             - "Descripción opcional de la columna"
+#           enable_entity_matching: true
+#           enable_format_assistance: true
+#           synonyms:
+#             - "ventas"
+#             - "ingresos"
+#
+instructions:
+   example_question_sqls:
+     - id: ""
+       question:
+         - "Pregunta de ejemplo"
+       sql:
+         - "SELECT 1"
+       usage_guidance:
+         - "Cuándo usar esta query"
+       parameters:
+         - name: "year"
+           type_hint: "STRING"
+           default_value:
+             values:
+               - "2024"
+#
+#   join_specs:
+#     - id: ""
+#       instruction:
+#         - "Siempre unir por product_id"
+#       left:
+#         alias: "f"
+#         identifier: "brz_dev.default.fact_sales_demo_genie"
+#       right:
+#         alias: "p"
+#         identifier: "brz_dev.default.dim_product_demo_genie"
+#       sql:
+#         - "f.product_id = p.product_id"
+#
+#   sql_functions:
+#     - id: ""
+#       identifier: "sum"
+#     - id: ""
+#       identifier: "count_distinct"
+#
+#   sql_snippets:
+#     expressions:
+#       - id: ""
+#         display_name: "Venta neta"
+#         instruction:
+#           - "Usar para medir ventas netas"
+#         sql:
+#           - "SUM(f.net_sales)"
+#         synonyms:
+#           - "ventas netas"
+#     filters:
+#       - id: ""
+#         display_name: "Solo SMALL"
+#         instruction:
+#           - "Filtrar productos SMALL"
+#         sql:
+#           - "p.product_type ILIKE '%SMALL%'"
+#         synonyms:
+#           - "tipo small"
+#     measures:
+#       - id: ""
+#         display_name: "Precio promedio por tonelada"
+#         instruction:
+#           - "Precio promedio por tonelada"
+#         sql:
+#           - "SUM(facturacion_hnd.VALOR_NETO_USD) / NULLIF(SUM(facturacion_hnd.TONELADAS), 0)"
+#         synonyms:
+#           - "Precio promedio por tonelada"
+#
+#   text_instructions:
+#     - id: ""
+#       content:
+#         - "test"
