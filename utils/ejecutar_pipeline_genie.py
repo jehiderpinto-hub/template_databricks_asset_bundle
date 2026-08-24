@@ -566,6 +566,38 @@ def resolve_deployed_genie_space_id(
     raise RuntimeError(f"No se encontró el recurso Genie '{resource_name}' con ID en bundle summary")
 
 
+def resolve_assessment_workspace_path(target: str, profile: str) -> str:
+    """Resuelve la ruta remota de salidas del assessment desde bundle summary."""
+    command = [
+        "databricks",
+        "-o",
+        "json",
+        "bundle",
+        "summary",
+        "--target",
+        target,
+        "--profile",
+        profile,
+    ]
+    CONSOLE.stage("Resolviendo ruta remota de salidas del assessment", command)
+    result = run_subprocess(command, PROJECT_ROOT, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"No se pudo obtener bundle summary para resolver assessment outputs: {result.stderr}"
+        )
+    try:
+        summary = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("La salida de bundle summary no es JSON válido") from error
+
+    workspace_root = summary.get("workspace", {}).get("root_path")
+    if not isinstance(workspace_root, str) or not workspace_root.strip():
+        raise RuntimeError("No se encontró workspace.root_path en bundle summary")
+    workspace_path = f"{workspace_root.rstrip('/')}/files/src/notebooks"
+    CONSOLE.success(f"Ruta remota: {workspace_path}")
+    return workspace_path
+
+
 def get_genie_resource_name(yaml_file: Path) -> str:
     """Obtiene la clave del recurso Genie a partir del YAML generado/importado."""
     with yaml_file.open(encoding="utf-8") as file:
@@ -841,14 +873,17 @@ def cleanup_metric_views(metric_view_identifiers: list[str], profile: str) -> No
             )
 
 
-def retrieve_assessment_outputs(profile: str) -> None:
+def retrieve_assessment_outputs(profile: str, target: str) -> None:
     """Descarga las salidas del Job a ``genie_assessment/temp/assessment_outputs``."""
+    workspace_path = resolve_assessment_workspace_path(target, profile)
     run_command(
         [
             sys.executable,
             "utils/recuperar_salidas_assessment.py",
             "--profile",
             profile,
+            "--workspace-path",
+            workspace_path,
         ],
         "Recuperando salidas",
     )
@@ -964,7 +999,7 @@ def main() -> None:
 
         if should_validate:
             validate_and_run_job(args.target, args.profile)
-            retrieve_assessment_outputs(args.profile)
+            retrieve_assessment_outputs(args.profile, args.target)
             if should_refactor:
                 created_metric_view_identifiers = refactor_genie(
                     json_file,
@@ -1012,7 +1047,13 @@ def main() -> None:
         if not benchmark_passed:
             if revert_on_failed_benchmark:
                 if args.existing_id:
-                    if deployed_space_id:
+                    if (
+                        previous_snapshot is not None
+                        and previous_deployed_space_id
+                        and deployed_space_id == previous_deployed_space_id
+                    ):
+                        restore_genie_space(previous_snapshot, args.profile)
+                    elif deployed_space_id:
                         discard_deployed_genie_space(
                             deployed_space_id,
                             args.profile,
