@@ -1,9 +1,0 @@
-resources:
-  genie_spaces:
-    dev_josorioos_demo_genie_ui:
-      title: '[dev josorioos] demo_genie_ui'
-      warehouse_id: 6fadc34945c1c177
-      file_path: ../../src/genie_spaces/dev_josorioos_demo_genie_ui.geniespace.json
-      description: Agente de prueba para responder preguntas sobre viajes, tarifas,
-        distancias y cobros de taxis en NYC.
-      parent_path: /Workspace/Users/josorioos@argos.com.co/GenieSpaces
