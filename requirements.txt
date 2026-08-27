@@ -1,0 +1,20 @@
+# Dependencias de EJECUCIÓN del pipeline (utils/ejecutar_pipeline_genie.py y afines).
+# Versiones fijadas exactamente: instalar siempre con `pip install -r requirements.txt`
+# (no usar `pip install PyYAML databricks-sdk` sin versión, para no romper la reproducibilidad).
+
+PyYAML==6.0.3
+databricks-sdk==0.127.0
+
+# --- Dependencias transitivas de databricks-sdk, fijadas para reproducibilidad total ---
+google-auth==2.56.3
+protobuf==6.33.6
+requests==2.34.2
+urllib3==2.7.0
+cryptography==50.0.0
+pyasn1-modules==0.4.2
+pyasn1==0.6.4
+cffi==2.1.1
+pycparser==3.0
+certifi==2026.7.22
+charset-normalizer==3.5.0
+idna==3.18

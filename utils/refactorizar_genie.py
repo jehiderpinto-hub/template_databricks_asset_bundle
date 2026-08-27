@@ -14,6 +14,14 @@ import yaml
 
 MANIFEST_FILE_NAME = "genie_metric_views_manifest.json"
 
+# Valores válidos de `format` según com.databricks.sql.serde.v11.ColumnFormat
+VALID_COLUMN_FORMATS = {"byte", "currency", "date", "date_time", "number", "percentage"}
+COLUMN_FORMAT_ALIASES = {
+    "percent": "percentage",
+    "pct": "percentage",
+    "%": "percentage",
+}
+
 
 def _parse_destination(destination: str) -> tuple[str, str]:
     parts = [part.strip() for part in destination.split(".") if part.strip()]
@@ -120,6 +128,16 @@ def _sanitize_metric_view_payload(proposal: dict[str, Any]) -> dict[str, Any]:
             item["name"] = sanitized_name
             if isinstance(item.get("alias"), str) and item["alias"].strip():
                 item["alias"] = _sanitize_identifier(str(item["alias"]))
+
+            format_value = item.get("format")
+            if isinstance(format_value, str):
+                normalized_format = COLUMN_FORMAT_ALIASES.get(
+                    format_value.strip().lower(), format_value.strip().lower()
+                )
+                if normalized_format in VALID_COLUMN_FORMATS:
+                    item["format"] = normalized_format
+                else:
+                    del item["format"]
 
     return sanitized
 

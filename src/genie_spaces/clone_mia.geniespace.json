@@ -33,7 +33,7 @@
         "evaluation_note": [
           "Debe devolver una sola fila con una sola columna numérica llamada total_clientes_padre, contando registros de gld_star_prod.hon.maestro_clientes donde TIPO_DE_CODIGO sea 'Padre'."
         ],
-        "id": "e0b2da9a75d04fa4a55d35bfe90f59b9"
+        "id": "33867c91c48241f88ba75e4eb9a6b235"
       }
     ]
   },
@@ -4576,7 +4576,7 @@
     ],
     "example_question_sqls": [
       {
-        "id": "8b3d8fe85e9b4129971382ebb5b2681e",
+        "id": "e674556ea4c0463c9b4d4ff99132ff08",
         "question": [
           "Pregunta de ejemplo"
         ],

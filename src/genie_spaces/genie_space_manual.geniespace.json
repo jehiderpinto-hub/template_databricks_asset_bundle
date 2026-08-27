@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "brz_dev.star_generico.rentabilidad_honduras",
+        "column_configs": []
+      },
+      {
+        "identifier": "gld_star_dev.hon.tabladescuentos",
+        "column_configs": []
+      },
+      {
+        "identifier": "gld_star_prod.hon.vw_chequeo_precio_inventario_hon",
+        "column_configs": []
+      }
+    ]
+  },
+  "instructions": {},
+  "benchmarks": {
+    "questions": [
+      {
+        "question": [
+          "¿Dame los ultimos chequeos de precios en la ciudad de Tatumbla?"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT * FROM gld_star_prod.hon.vw_chequeo_precio_inventario_hon WHERE Municipio = 'TATUMBLA' ORDER BY Fecha_Creacion DESC LIMIT 10;"
+            ]
+          }
+        ],
+        "evaluation_note": [
+          "Debe devolver una tabla con las columnas Nombre_Propietario, Codigo_Cliente, Fecha_Creacion, Proveedor, Marca, Precio_Flete, Precio_Compra, Precio_Venta"
+        ],
+        "id": "921ec1effcaa4af6b5ad2b00866a4fd9"
+      }
+    ]
+  }
+}

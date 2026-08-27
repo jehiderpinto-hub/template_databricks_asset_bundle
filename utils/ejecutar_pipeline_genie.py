@@ -262,9 +262,16 @@ def get_config_benchmarks(config: dict | None) -> list[dict[str, Any]]:
         expected_sql = item.get("expected_sql") or item.get("sql") or item.get("answer_sql")
         normalized_answer_values: list[dict[str, Any]] = []
         if isinstance(answer_values, list):
-            normalized_answer_values = answer_values
+            for answer in answer_values:
+                if not isinstance(answer, dict):
+                    normalized_answer_values.append(answer)
+                    continue
+                content = answer.get("content")
+                if isinstance(content, str):
+                    answer = {**answer, "content": [content]}
+                normalized_answer_values.append(answer)
             if not expected_sql:
-                for answer in answer_values:
+                for answer in normalized_answer_values:
                     if not isinstance(answer, dict):
                         continue
                     if answer.get("format") != "SQL":
@@ -272,8 +279,6 @@ def get_config_benchmarks(config: dict | None) -> list[dict[str, Any]]:
                     content = answer.get("content", [])
                     if isinstance(content, list):
                         expected_sql = "".join(content)
-                    elif isinstance(content, str):
-                        expected_sql = content
                     if expected_sql:
                         break
 
@@ -783,10 +788,14 @@ def create_manual_genie_space(
 
 
 def validate_and_run_job(target: str, profile: str) -> None:
-    """Valida, sincroniza archivos y ejecuta el Job de assessment ya desplegado."""
+    """Valida, despliega el Job de assessment y lo ejecuta."""
     run_command(
         ["databricks", "bundle", "validate", "--target", target, "--profile", profile],
         "Validando bundle",
+    )
+    run_command(
+        ["databricks", "bundle", "deploy", "--target", target, "--profile", profile],
+        "Desplegando bundle para el assessment",
     )
     run_command(
         ["databricks", "bundle", "sync", "--target", target, "--profile", profile],
@@ -1000,11 +1009,15 @@ def main() -> None:
         if should_validate:
             validate_and_run_job(args.target, args.profile)
             retrieve_assessment_outputs(args.profile, args.target)
-            if should_refactor:
+            if should_refactor and METRIC_VIEW_OUTPUT_FILE.exists():
                 created_metric_view_identifiers = refactor_genie(
                     json_file,
                     args.profile,
                     pipeline_config,
+                )
+            elif should_refactor:
+                CONSOLE.skipped(
+                    "Refactorización omitida: el assessment no propuso metric views nuevas."
                 )
             else:
                 CONSOLE.skipped(

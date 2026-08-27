@@ -142,44 +142,33 @@ def _resolve_eval_space_id(
     client: WorkspaceClient,
     base_space_id: str,
     benchmarks_with_id: list[dict[str, str]],
-    genie_json_path: Path,
-) -> tuple[str, bool]:
-    """Resuelve el espacio de evaluación en remoto (sin espacios temporales)."""
-    _ = genie_json_path
+) -> str:
+    """Verifica que los benchmarks locales existan en el Genie remoto desplegado."""
     remote_signatures = _get_remote_benchmark_signatures(client, base_space_id)
     local_ids = [benchmark["id"] for benchmark in benchmarks_with_id if benchmark.get("id")]
     all_present = set(local_ids).issubset(set(remote_signatures.keys()))
-    same_content = False
-    if all_present:
-        same_content = True
-        for benchmark in benchmarks_with_id:
-            benchmark_id = benchmark["id"]
-            remote_signature = remote_signatures.get(benchmark_id)
-            local_signature = _benchmark_signature(
-                benchmark.get("question", ""),
-                benchmark.get("expected_sql", ""),
-            )
-            if remote_signature != local_signature:
-                same_content = False
-                break
     if not all_present:
         raise RuntimeError(
             "Los benchmarks a evaluar no existen en el Genie remoto desplegado. "
             "Asegura deploy exitoso antes de ejecutar benchmarks."
         )
+    same_content = all(
+        remote_signatures.get(benchmark["id"])
+        == _benchmark_signature(benchmark.get("question", ""), benchmark.get("expected_sql", ""))
+        for benchmark in benchmarks_with_id
+    )
     if not same_content:
         print(
             "[WARNING] El benchmark local difiere del remoto desplegado; "
             "se evaluará el benchmark remoto por consistencia del entorno."
         )
-    return base_space_id, False
+    return base_space_id
 
 
 def _evaluate_registered_benchmarks(
     client: WorkspaceClient,
     genie_space_id: str,
     benchmarks_with_id: list[dict[str, str]],
-    genie_json_path: Path,
 ) -> list[dict[str, Any]]:
     """Evalúa benchmarks con la evaluación oficial de Genie."""
     benchmark_ids = [benchmark["id"] for benchmark in benchmarks_with_id if benchmark["id"]]
@@ -187,11 +176,10 @@ def _evaluate_registered_benchmarks(
         return []
 
     benchmark_lookup = {benchmark["id"]: benchmark for benchmark in benchmarks_with_id}
-    eval_space_id, _ = _resolve_eval_space_id(
+    eval_space_id = _resolve_eval_space_id(
         client,
         genie_space_id,
         benchmarks_with_id,
-        genie_json_path,
     )
     run = client.genie.genie_create_eval_run(
         space_id=eval_space_id,
@@ -237,7 +225,6 @@ def evaluate_benchmarks(
     genie_space_id: str,
     benchmarks: list[dict[str, str]],
     profile: str,
-    genie_json_path: Path,
 ) -> list[dict[str, Any]]:
     """Evalúa benchmarks con evaluación oficial de Genie."""
     if not benchmarks:
@@ -252,7 +239,6 @@ def evaluate_benchmarks(
         client,
         genie_space_id,
         benchmarks_with_id,
-        genie_json_path,
     )
     if not results:
         raise ValueError("No se pudieron evaluar benchmarks")
@@ -309,7 +295,6 @@ def main() -> None:
         args.genie_space_id,
         benchmarks,
         args.profile,
-        args.genie_json,
     )
     average_score = write_report(results, args.report)
     print(f"Preguntas evaluadas: {len(results)}")

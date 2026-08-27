@@ -1,7 +1,0 @@
-resources:
-  genie_spaces:
-    demo_genie_ui:
-      title: demo_genie_ui
-      warehouse_id: ${var.assessment_warehouse_id}
-      file_path: ../../src/genie_spaces/demo_genie_ui.geniespace.json
-      parent_path: ${var.genie_parent_path}

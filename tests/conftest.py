@@ -1,17 +1,22 @@
 """This file configures pytest, initializes Databricks Connect, and provides fixtures for Spark and loading test data."""
 
-import os, sys, pathlib
+import os
+import pathlib
+import sys
 from contextlib import contextmanager
+
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "utils"))
 
 
 try:
+    import csv
+    import json
+    import os
+
+    import pytest
     from databricks.connect import DatabricksSession
     from databricks.sdk import WorkspaceClient
     from pyspark.sql import SparkSession
-    import pytest
-    import json
-    import csv
-    import os
 except ImportError:
     raise ImportError(
         "Test dependencies not found.\n\nRun tests using 'uv run pytest'. See http://docs.astral.sh/uv to learn more about uv."
@@ -83,12 +88,19 @@ def _allow_stderr_output(config: pytest.Config):
 def pytest_configure(config: pytest.Config):
     """Configure pytest session."""
     with _allow_stderr_output(config):
-        _enable_fallback_compute()
+        try:
+            _enable_fallback_compute()
 
-        # Initialize Spark session eagerly, so it is available even when
-        # SparkSession.builder.getOrCreate() is used. For DB Connect 15+,
-        # we validate version compatibility with the remote cluster.
-        if hasattr(DatabricksSession.builder, "validateSession"):
-            DatabricksSession.builder.validateSession().getOrCreate()
-        else:
-            DatabricksSession.builder.getOrCreate()
+            # Initialize Spark session eagerly, so it is available even when
+            # SparkSession.builder.getOrCreate() is used. For DB Connect 15+,
+            # we validate version compatibility with the remote cluster.
+            if hasattr(DatabricksSession.builder, "validateSession"):
+                DatabricksSession.builder.validateSession().getOrCreate()
+            else:
+                DatabricksSession.builder.getOrCreate()
+        except Exception as error:
+            print(
+                f"No se pudo inicializar Databricks Connect ({error}); "
+                "los tests que dependan del fixture 'spark' fallarán al ejecutarse.",
+                file=sys.stderr,
+            )
