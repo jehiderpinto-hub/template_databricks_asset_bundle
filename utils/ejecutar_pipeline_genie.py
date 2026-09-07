@@ -13,8 +13,9 @@ import yaml
 from comun import clear_directory_contents, run_subprocess
 from crear_genie_desde_entradas import create_files
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import DatabricksError
 from leer_estructura_genie import build_config as build_imported_genie_config
-from leer_estructura_genie import write_config
+from leer_estructura_genie import get_source_identifiers, write_config
 from transaccion_proyecto import LocalProjectTransaction
 
 
@@ -121,11 +122,26 @@ def find_generated_file(
     directory: Path,
     pattern: str,
     files_before_generation: set[Path],
+    generation_started_at: float | None = None,
 ) -> Path:
-    """Selecciona el archivo nuevo más reciente o el existente más reciente."""
+    """Selecciona el archivo nuevo más reciente o el existente más reciente.
+
+    Si no hay archivos nuevos (p. ej. el comando sobrescribió un archivo con el
+    mismo nombre), se descartan candidatos con mtime anterior a
+    ``generation_started_at`` para evitar seleccionar restos huérfanos de una
+    ejecución previa interrumpida.
+    """
     files_after_generation = get_files(directory, pattern)
     new_files = files_after_generation - files_before_generation
     candidates = new_files or files_after_generation
+
+    if not new_files and generation_started_at is not None:
+        fresh_candidates = {
+            file_path
+            for file_path in candidates
+            if file_path.stat().st_mtime >= generation_started_at
+        }
+        candidates = fresh_candidates or candidates
 
     if not candidates:
         raise FileNotFoundError(
@@ -390,11 +406,120 @@ def _merge_instruction_values(base_value: Any, override_value: Any) -> Any:
     return override_value
 
 
+def _is_empty_value(value: Any) -> bool:
+    return value is None or value in ("", [], {})
+
+
+def _merge_column_config_entry(base_column: dict[str, Any], override_column: dict[str, Any]) -> dict[str, Any]:
+    """Combina un column_config conservando el máximo de atributos entre ambas versiones."""
+    merged = dict(base_column)
+    for key, value in override_column.items():
+        if _is_empty_value(value) and key in merged and not _is_empty_value(merged[key]):
+            continue
+        merged[key] = value
+    return merged
+
+
+def _merge_column_configs(
+    base_columns: list[Any] | None,
+    override_columns: list[Any] | None,
+) -> list[dict[str, Any]]:
+    """Fusiona column_configs por ``column_name`` evitando columnas duplicadas."""
+    by_name: dict[str, dict[str, Any]] = {}
+    for column in base_columns or []:
+        if not isinstance(column, dict):
+            continue
+        name = column.get("column_name")
+        if isinstance(name, str) and name:
+            by_name[name] = dict(column)
+    for column in override_columns or []:
+        if not isinstance(column, dict):
+            continue
+        name = column.get("column_name")
+        if not isinstance(name, str) or not name:
+            continue
+        if name in by_name:
+            by_name[name] = _merge_column_config_entry(by_name[name], column)
+        else:
+            by_name[name] = dict(column)
+    return sorted(by_name.values(), key=lambda column: column.get("column_name", ""))
+
+
+def _merge_table_entry(base_table: dict[str, Any], override_table: dict[str, Any]) -> dict[str, Any]:
+    """Combina dos definiciones de una misma tabla conservando el máximo de atributos."""
+    merged = dict(base_table)
+    for key, value in override_table.items():
+        if key == "column_configs":
+            merged[key] = _merge_column_configs(base_table.get("column_configs"), value)
+            continue
+        if _is_empty_value(value) and key in merged and not _is_empty_value(merged[key]):
+            continue
+        if isinstance(merged.get(key), dict) and isinstance(value, dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    merged.setdefault("column_configs", [])
+    return merged
+
+
+def _merge_tables(
+    base_tables: list[Any] | None,
+    override_tables: list[Any] | None,
+) -> list[dict[str, Any]]:
+    """Fusiona listas de tablas por ``identifier`` para que no se dupliquen fuentes."""
+    by_identifier: dict[str, dict[str, Any]] = {}
+    for table in base_tables or []:
+        if not isinstance(table, dict):
+            print(f"[WARNING] Se omite una tabla malformada (no es un objeto): {table!r}", file=sys.stderr)
+            continue
+        identifier = table.get("identifier")
+        if isinstance(identifier, str) and identifier:
+            by_identifier[identifier] = dict(table)
+        else:
+            print(f"[WARNING] Se omite una tabla sin 'identifier' válido: {table!r}", file=sys.stderr)
+    for table in override_tables or []:
+        if not isinstance(table, dict):
+            print(f"[WARNING] Se omite una tabla malformada (no es un objeto): {table!r}", file=sys.stderr)
+            continue
+        identifier = table.get("identifier")
+        if not isinstance(identifier, str) or not identifier:
+            print(f"[WARNING] Se omite una tabla sin 'identifier' válido: {table!r}", file=sys.stderr)
+            continue
+        if identifier in by_identifier:
+            by_identifier[identifier] = _merge_table_entry(by_identifier[identifier], table)
+        else:
+            merged_table = dict(table)
+            merged_table["column_configs"] = _merge_column_configs(None, table.get("column_configs"))
+            by_identifier[identifier] = merged_table
+    return sorted(by_identifier.values(), key=lambda table: table.get("identifier", ""))
+
+
+def _sources_as_tables(sources: list[Any] | None) -> list[dict[str, Any]]:
+    """Convierte la lista simple ``sources`` en tablas mínimas para fusionarlas."""
+    return [
+        {"identifier": source, "column_configs": []}
+        for source in sources or []
+        if isinstance(source, str) and source
+    ]
+
+
+def normalize_genie_data_sources(genie_space: dict[str, Any]) -> None:
+    """Unifica ``sources``/``data_sources`` en una sola fuente de verdad sin duplicar
+    tablas y ordena las columnas alfabéticamente para que el deploy no falle."""
+    data_sources = genie_space.get("data_sources")
+    tables = data_sources.get("tables") if isinstance(data_sources, dict) else []
+    if not isinstance(tables, list):
+        tables = []
+    normalized_tables = _merge_tables(tables, [])
+    genie_space.setdefault("data_sources", {})["tables"] = normalized_tables
+
+
 def merge_benchmarks_into_genie_json(
     json_file: Path,
     pipeline_config: dict | None,
     configured_benchmarks: list[dict[str, Any]],
     require_configured: bool,
+    allow_empty_benchmarks: bool = False,
 ) -> tuple[int, int]:
     """Combina benchmarks del JSON con los del config y persiste el resultado."""
     if require_configured and not configured_benchmarks:
@@ -406,7 +531,7 @@ def merge_benchmarks_into_genie_json(
         genie_space = json.load(file)
 
     if pipeline_config:
-        for key in ("version", "data_sources", "instructions"):
+        for key in ("version", "instructions"):
             if key in pipeline_config and pipeline_config[key] is not None:
                 if key in genie_space:
                     if key == "instructions":
@@ -421,6 +546,25 @@ def merge_benchmarks_into_genie_json(
                         )
                 else:
                     genie_space[key] = pipeline_config[key]
+
+        config_sources = get_config_sources(pipeline_config)
+        config_data_sources = pipeline_config.get("data_sources")
+        config_tables = (
+            config_data_sources.get("tables")
+            if isinstance(config_data_sources, dict)
+            else []
+        )
+        if config_tables is None:
+            config_tables = []
+        if not isinstance(config_tables, list):
+            raise ValueError("data_sources.tables debe ser una lista en pipeline_config.yml")
+
+        existing_tables = genie_space.get("data_sources", {}).get("tables", [])
+        merged_tables = _merge_tables(existing_tables, _sources_as_tables(config_sources))
+        merged_tables = _merge_tables(merged_tables, config_tables)
+        genie_space.setdefault("data_sources", {})["tables"] = merged_tables
+
+    normalize_genie_data_sources(genie_space)
 
     _autogenerate_empty_ids(genie_space)
 
@@ -458,7 +602,7 @@ def merge_benchmarks_into_genie_json(
         existing_signatures.add(signature)
         added_count += 1
 
-    if not benchmark_questions:
+    if not benchmark_questions and not allow_empty_benchmarks:
         raise ValueError("El Genie no contiene benchmarks para evaluar")
 
     with json_file.open("w", encoding="utf-8") as file:
@@ -501,11 +645,17 @@ def resolve_revert_on_failed_benchmark(config: dict | None) -> bool:
     return True
 
 
-def resolve_metric_view_destination(config: dict | None) -> str:
+def resolve_metric_view_destination(
+    config: dict | None,
+    use_interactive_prompt: bool = False,
+) -> str:
     """Obtiene el destino catalog.schema para crear metric views."""
-    if not config:
-        raise ValueError("metric_view_destination es obligatorio en pipeline_config.yml")
-    destination = config.get("metric_view_destination")
+    destination = config.get("metric_view_destination") if config else None
+    if not isinstance(destination, str) or not destination.strip():
+        if use_interactive_prompt:
+            destination = input("Metric view destination (catalog.schema): ").strip()
+        else:
+            raise ValueError("metric_view_destination es obligatorio en pipeline_config.yml")
     if not isinstance(destination, str) or not destination.strip():
         raise ValueError("metric_view_destination es obligatorio y debe tener formato catalog.schema")
     parts = [part.strip() for part in destination.split(".") if part.strip()]
@@ -683,10 +833,35 @@ def ask_yes_no(question: str) -> bool:
         print("Respuesta inválida. Usa y/n.")
 
 
+def ask_benchmark_questions() -> list[dict[str, Any]]:
+    """Solicita benchmarks (pregunta + SQL esperado) por consola para Genies nuevos sin config."""
+    print(
+        "Define benchmarks para el Genie nuevo (obligatorio al menos uno). "
+        "Deja la pregunta vacía para terminar."
+    )
+    benchmarks: list[dict[str, Any]] = []
+    while True:
+        question = input("Pregunta benchmark: ").strip()
+        if not question:
+            break
+        sql = input("SQL esperado: ").strip()
+        if not sql:
+            print("El SQL esperado es obligatorio; se descarta este benchmark.")
+            continue
+        benchmarks.append(
+            {
+                "question": [question],
+                "answer": [{"format": "SQL", "content": [sql]}],
+            }
+        )
+    return benchmarks
+
+
 def generar_genie_space_existente(existing_id: str, profile: str) -> tuple[Path, Path]:
     """Genera el Genie Space y devuelve sus rutas YAML y JSON organizadas."""
     yaml_files_before = get_files(RESOURCES_DIRECTORY, "*.genie_space.yml")
     json_files_before = get_files(SOURCE_DIRECTORY, "*.geniespace.json")
+    generation_started_at = time.time()
     run_command(
         [
             sys.executable,
@@ -699,8 +874,12 @@ def generar_genie_space_existente(existing_id: str, profile: str) -> tuple[Path,
         "Generando Genie Space",
     )
     return (
-        find_generated_file(RESOURCES_DIRECTORY, "*.genie_space.yml", yaml_files_before),
-        find_generated_file(SOURCE_DIRECTORY, "*.geniespace.json", json_files_before),
+        find_generated_file(
+            RESOURCES_DIRECTORY, "*.genie_space.yml", yaml_files_before, generation_started_at
+        ),
+        find_generated_file(
+            SOURCE_DIRECTORY, "*.geniespace.json", json_files_before, generation_started_at
+        ),
     )
 
 
@@ -740,6 +919,45 @@ def generate_config_from_import(
     write_config(config)
 
 
+def refresh_config_tables_from_genie_json(json_file: Path) -> None:
+    """Sincroniza catalogs/schemas/tables de config.json con las tablas finales del Genie.
+
+    Debe ejecutarse después de fusionar ``sources``/``data_sources`` en el JSON,
+    para que el assessment evalúe exactamente las tablas que quedarán desplegadas.
+    """
+    config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
+    if not config_file.exists():
+        return
+
+    with config_file.open(encoding="utf-8") as file:
+        config = json.load(file)
+    with json_file.open(encoding="utf-8") as file:
+        genie_space = json.load(file)
+
+    table_identifiers = get_source_identifiers(genie_space)
+    catalogs: list[str] = []
+    schemas: list[str] = []
+    for identifier in table_identifiers:
+        parts = identifier.split(".")
+        if len(parts) != 3:
+            raise ValueError(
+                f"La fuente '{identifier}' no tiene el formato catalog.schema.table"
+            )
+        catalog, schema, _ = parts
+        if catalog not in catalogs:
+            catalogs.append(catalog)
+        if schema not in schemas:
+            schemas.append(schema)
+
+    config["catalogs"] = catalogs
+    config["schemas"] = schemas
+    config["tables"] = table_identifiers
+
+    with config_file.open("w", encoding="utf-8") as file:
+        json.dump(config, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+
+
 def create_manual_genie_space(
     title: str,
     warehouse_id: str,
@@ -752,10 +970,26 @@ def create_manual_genie_space(
         raise ValueError("warehouse_id es obligatorio para crear un Genie nuevo")
     if config is not None:
         CONSOLE.stage("Creando Genie Space desde configuracion declarativa")
-        sources = get_config_sources(config)
+        config_data_sources = config.get("data_sources")
+        config_tables = (
+            config_data_sources.get("tables")
+            if isinstance(config_data_sources, dict)
+            else []
+        ) or []
+        if not isinstance(config_tables, list):
+            raise ValueError("data_sources.tables debe ser una lista en pipeline_config.yml")
+        data_source_identifiers = [
+            table.get("identifier")
+            for table in config_tables
+            if isinstance(table, dict) and isinstance(table.get("identifier"), str) and table.get("identifier")
+        ]
+        sources = list(dict.fromkeys([*get_config_sources(config), *data_source_identifiers]))
         questions = get_config_questions(config, require_non_empty=True)
         if not sources or not questions:
-            raise ValueError("La configuración debe incluir sources y business_questions")
+            raise ValueError(
+                "La configuración debe incluir al menos una fuente (sources o data_sources.tables) "
+                "y business_questions"
+            )
         yaml_file, json_file, _ = create_files(
             title,
             sources,
@@ -768,6 +1002,7 @@ def create_manual_genie_space(
 
     before_yaml = get_files(RESOURCES_DIRECTORY, "*.genie_space.yml")
     before_json = get_files(SOURCE_DIRECTORY, "*.geniespace.json")
+    generation_started_at = time.time()
     run_command(
         [
             sys.executable,
@@ -782,8 +1017,12 @@ def create_manual_genie_space(
         "Creando Genie Space desde fuentes",
     )
     return (
-        find_generated_file(RESOURCES_DIRECTORY, "*.genie_space.yml", before_yaml),
-        find_generated_file(SOURCE_DIRECTORY, "*.geniespace.json", before_json),
+        find_generated_file(
+            RESOURCES_DIRECTORY, "*.genie_space.yml", before_yaml, generation_started_at
+        ),
+        find_generated_file(
+            SOURCE_DIRECTORY, "*.geniespace.json", before_json, generation_started_at
+        ),
     )
 
 
@@ -821,7 +1060,10 @@ def refactor_genie(json_file: Path, profile: str, pipeline_config: dict | None) 
     config_file = PROJECT_ROOT / "genie_assessment" / "temp" / "config.json"
     with config_file.open(encoding="utf-8") as file:
         config = json.load(file)
-    metric_view_destination = resolve_metric_view_destination(pipeline_config)
+    metric_view_destination = resolve_metric_view_destination(
+        pipeline_config,
+        use_interactive_prompt=pipeline_config is None,
+    )
     run_command(
         [
             sys.executable,
@@ -956,7 +1198,7 @@ def main() -> None:
         pipeline_config = load_pipeline_config(args.config)
         apply_pipeline_config(args, pipeline_config)
     CONSOLE.start(args, args.config)
-    with LocalProjectTransaction(MANAGED_DIRECTORIES):
+    with LocalProjectTransaction(MANAGED_DIRECTORIES) as transaction:
         created_metric_view_identifiers: list[str] = []
         CONSOLE.stage("Limpiando assessment_outputs")
         clear_directory_contents(ASSESSMENT_OUTPUTS_DIRECTORY)
@@ -982,19 +1224,6 @@ def main() -> None:
                 pipeline_config,
             )
 
-        configured_benchmarks = get_config_benchmarks(pipeline_config)
-        CONSOLE.stage("Preparando benchmarks del Genie")
-        total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
-            json_file,
-            pipeline_config,
-            configured_benchmarks,
-            require_configured=not bool(args.existing_id),
-        )
-        CONSOLE.success(
-            f"Benchmarks finales a desplegar: {total_benchmarks} "
-            f"(agregados desde config: {added_benchmarks})"
-        )
-
         should_validate = resolve_run_validation(
             pipeline_config,
             use_interactive_prompt=bool(args.existing_id),
@@ -1006,15 +1235,37 @@ def main() -> None:
         )
         revert_on_failed_benchmark = resolve_revert_on_failed_benchmark(pipeline_config)
 
+        configured_benchmarks = get_config_benchmarks(pipeline_config)
+        if not args.existing_id and pipeline_config is None and not configured_benchmarks:
+            CONSOLE.stage("Definiendo benchmarks para el Genie nuevo")
+            configured_benchmarks = ask_benchmark_questions()
+
+        CONSOLE.stage("Preparando benchmarks del Genie")
+        total_benchmarks, added_benchmarks = merge_benchmarks_into_genie_json(
+            json_file,
+            pipeline_config,
+            configured_benchmarks,
+            require_configured=not bool(args.existing_id),
+            allow_empty_benchmarks=bool(args.existing_id) and not should_validate,
+        )
+        CONSOLE.success(
+            f"Benchmarks finales a desplegar: {total_benchmarks} "
+            f"(agregados desde config: {added_benchmarks})"
+        )
+        refresh_config_tables_from_genie_json(json_file)
+
         if should_validate:
             validate_and_run_job(args.target, args.profile)
             retrieve_assessment_outputs(args.profile, args.target)
             if should_refactor and METRIC_VIEW_OUTPUT_FILE.exists():
-                created_metric_view_identifiers = refactor_genie(
-                    json_file,
-                    args.profile,
-                    pipeline_config,
-                )
+                try:
+                    created_metric_view_identifiers = refactor_genie(
+                        json_file,
+                        args.profile,
+                        pipeline_config,
+                    )
+                except ValueError as error:
+                    CONSOLE.skipped(f"Refactorización omitida: {error}")
             elif should_refactor:
                 CONSOLE.skipped(
                     "Refactorización omitida: el assessment no propuso metric views nuevas."
@@ -1038,9 +1289,10 @@ def main() -> None:
                     previous_deployed_space_id,
                     args.profile,
                 )
-            except RuntimeError:
+            except (RuntimeError, DatabricksError) as error:
                 CONSOLE.skipped(
-                    "No se encontró un despliegue previo para snapshot; no habrá rollback automático."
+                    "No se encontró un despliegue previo para snapshot; no habrá rollback automático. "
+                    f"Detalle: {error}"
                 )
 
         deploy_bundle(args.target, args.profile)
@@ -1050,13 +1302,20 @@ def main() -> None:
             args.profile,
             fallback_space_id=args.existing_id if args.existing_id else None,
         )
-        benchmark_passed = run_benchmarks(
-            deployed_space_id,
-            json_file,
-            args.profile,
-            args.benchmark_threshold,
-            revert_on_failed_benchmark,
-        )
+        if total_benchmarks > 0:
+            benchmark_passed = run_benchmarks(
+                deployed_space_id,
+                json_file,
+                args.profile,
+                args.benchmark_threshold,
+                revert_on_failed_benchmark,
+            )
+        else:
+            CONSOLE.skipped(
+                "No hay benchmarks para evaluar (run_validate=false y el Genie no tiene benchmarks); "
+                "se omite la validación de calidad."
+            )
+            benchmark_passed = True
         if not benchmark_passed:
             if revert_on_failed_benchmark:
                 if args.existing_id:
@@ -1086,6 +1345,9 @@ def main() -> None:
                         "Deploy revertido para Genie nuevo por fallo de benchmark."
                     )
                 cleanup_metric_views(created_metric_view_identifiers, args.profile)
+                CONSOLE.stage("Revirtiendo archivos locales generados por el pipeline")
+                transaction.restore()
+                CONSOLE.success("Archivos locales revertidos al estado previo")
             else:
                 print(
                     "\n[WARNING] Benchmarks no superan el umbral, pero la configuración permite conservar los cambios."
@@ -1097,6 +1359,14 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError, yaml.YAMLError) as error:
+    except (
+        FileNotFoundError,
+        RuntimeError,
+        ValueError,
+        OSError,
+        DatabricksError,
+        json.JSONDecodeError,
+        yaml.YAMLError,
+    ) as error:
         print(f"\n[ERROR] Pipeline detenido: {error}", file=sys.stderr)
         raise SystemExit(1) from error

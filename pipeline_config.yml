@@ -1,71 +1,1203 @@
-#==========================================
-#Datos generales
-#==========================================
+# ==========================================
+# Datos generales
+# ==========================================
 
 profile: dev
 target: dev
-#existing_id: ""
-warehouse_id: "066cf23804609b70"
-benchmark_threshold: 0.5
+# existing_id: ""
+warehouse_id: "6fadc34945c1c177"
+benchmark_threshold: 0.4
 metric_view_destination: "brz_dev.default"
 revert_on_failed_benchmark: true
 
-#==========================================
-#Control de flujo
-#==========================================
-run_validate : false
-refactor: true
+# ==========================================
+# Control de flujo
+# ==========================================
 
-#==========================================
-#config para assessment
-#==========================================
+run_validate: false
+refactor: false
+
+# ==========================================
+# Config para assessment
+# ==========================================
 
 business_questions:
-  - "¿Cúal es cliente con el precio mas alto?"
-  - "¿Cúal es el flete por bolsa mas económico de todos?"
-  - "¿Cúal es el top 5 de clientes con mayor descuento por dirección general?"
-  - "¿Existe algun cliente que tenga un descuento mayor al 3% en el campo de Descuento asesor?"
+  - "Hazme un resumen de las precios FOB por producto agrupado por cada zona del país"
+  - "¿Cuál es el flete por bolsa más económico de todos?"
+  - "¿Cuál es el top 5 de clientes con mayor descuento por dirección general?"
+  - "¿Existe algún cliente que tenga un descuento mayor al 3% en el campo de Descuento asesor?"
   - "¿Dame el precio promedio ponderado de las ventas realizadas el mes pasado (Julio 2026)?"
-  - "¿Clientes que tuvieron un caida en las ventas en el mes de Julio 2026?"
-  - "¿Cual es el subsegmento que representa el mayor ingreso para el YTD (lo que va del año)?"
-  - "Cual es el cliente que tiene un descuento mas bajo comparado con todos los de su mismo grupo (el grupo es Subsegmento, Departamento, Municipio)?"
+  - "¿Clientes que tuvieron una caída en las ventas en el mes de Julio 2026?"
+  - "¿Cuál es el subsegmento que representa el mayor ingreso para el YTD (lo que va del año)?"
+  - "¿Cuál es el cliente que tiene un descuento más bajo comparado con todos los de su mismo grupo (Subsegmento, Departamento y Municipio)?"
 
 sources:
-
- - "brz_dev.star_generico.rentabilidad_honduras"
- - "gld_star_prod.hon.vw_chequeo_precio_inventario_hon"
- - "gld_star_dev.hon.tabladescuentos"
-
-
+  - "gld_consumption_3as_prod_hon_db.sd.zqry_zsdm03_009_hn"
+  - "brz_dev.star_generico.rentabilidad_honduras"
+  - "gld_star_prod.hon.vw_chequeo_precio_inventario_hon"
+  - "gld_star_dev.star_generico.tabladescuentos"
 
 benchmarks:
   questions:
+
     - id: ""
       question:
-        - "¿Dame los ultimos chequeos de precios en la ciudad de Tatumbla?"
+        - "¿Dame los últimos chequeos de precios en la ciudad de Tatumbla?"
       answer:
         - format: "SQL"
-          content:
+          content: |
             SELECT *
             FROM gld_star_prod.hon.vw_chequeo_precio_inventario_hon
             WHERE Municipio = 'TATUMBLA'
             ORDER BY Fecha_Creacion DESC
             LIMIT 10;
       evaluation_note:
-        - "Debe devolver una tabla con las columnas Nombre_Propietario, Codigo_Cliente, Fecha_Creacion, Proveedor, Marca, Precio_Flete, Precio_Compra, Precio_Venta"
+        - "Debe devolver una tabla con las columnas Nombre_Propietario, Codigo_Cliente, Fecha_Creacion, Proveedor, Marca, Precio_Flete, Precio_Compra y Precio_Venta."
 
-instruccions:
+    - id: ""
+      question:
+        - "¿Cuál es el flete por bolsa más económico de todos?"
+      answer:
+        - format: "SQL"
+          content: |
+            SELECT
+              CLIENTE,
+              NOMBRE,
+              Centro,
+              DEPARTAMENTO,
+              POBLACION,
+              FLETE AS flete_mas_economico
+            FROM gld_star_dev.star_generico.tabladescuentos
+            WHERE FLETE IS NOT NULL
+              AND FLETE > 0
+            ORDER BY FLETE ASC
+            LIMIT 2;
+      evaluation_note:
+        - "Debe devolver una tabla con dos registro y las columnas CLIENTE, NOMBRE, Centro, DEPARTAMENTO, POBLACION y FLETE."
+
+    - id: ""
+      question:
+        - "¿Cuál es el top 5 de clientes con mayor descuento por dirección general?"
+      answer:
+        - format: "SQL"
+          content: |
+            SELECT
+              CLIENTE,
+              NOMBRE,
+              CODIGO_PRODUCTO,
+              ABS(DCTO_DIR_GNRAL) AS DCTO_DIR_GNRAL,
+              ROUND(
+                ABS(DCTO_DIR_GNRAL) / NULLIF(PRECIO_FINAL, 0) * 100,
+                2
+              ) AS PCT_DCTO_DIR_GNRAL
+            FROM gld_star_dev.star_generico.tabladescuentos
+            WHERE DCTO_DIR_GNRAL <> 0
+              AND PRECIO_FINAL <> 0
+              AND CLIENTE <> '#'
+            ORDER BY PCT_DCTO_DIR_GNRAL DESC
+            LIMIT 5;
+      evaluation_note:
+        - "Debe devolver una tabla con cinco registros y las columnas CLIENTE, NOMBRE, CODIGO_PRODUCTO, DCTO_DIR_GNRAL y PCT_DCTO_DIR_GNRAL."
+
+    - id: ""
+      question:
+        - "¿Cuál es el cliente que tiene un descuento más bajo comparado con todos los de su mismo grupo (Subsegmento, Departamento, Municipio, Material)?"
+      answer:
+        - format: "SQL"
+          content: |
+            WITH descuentos AS (
+              SELECT
+                CLIENTE,
+                NOMBRE,
+                SUBSEGMENTO_CLIENTES,
+                DEPARTAMENTO,
+                POBLACION,
+                Material,
+                CODIGO_PRODUCTO,
+                PRECIO_BRUTO,
+                PRECIO_FINAL,
+                CASE
+                  WHEN PRECIO_BRUTO <> 0
+                    THEN PRECIO_FINAL / PRECIO_BRUTO
+                  ELSE NULL
+                END AS RATIO_DESCUENTO
+              FROM gld_star_dev.star_generico.tabladescuentos
+              WHERE CLIENTE <> '#'
+                AND PRECIO_BRUTO <> 0
+            ),
+            con_grupo AS (
+              SELECT
+                *,
+                AVG(RATIO_DESCUENTO) OVER (
+                  PARTITION BY SUBSEGMENTO_CLIENTES, DEPARTAMENTO, POBLACION, Material
+                ) AS RATIO_PROMEDIO_GRUPO,
+                RATIO_DESCUENTO -
+                AVG(RATIO_DESCUENTO) OVER (
+                  PARTITION BY SUBSEGMENTO_CLIENTES, DEPARTAMENTO, POBLACION, Material
+                ) AS DIFERENCIA_VS_GRUPO
+              FROM descuentos
+            ),
+            sin_duplicados AS (
+              SELECT
+                CLIENTE,
+                NOMBRE,
+                SUBSEGMENTO_CLIENTES,
+                DEPARTAMENTO,
+                POBLACION,
+                Material,
+                CODIGO_PRODUCTO,
+                ROUND(AVG(PRECIO_BRUTO), 2) AS PRECIO_BRUTO,
+                ROUND(AVG(PRECIO_FINAL), 2) AS PRECIO_FINAL,
+                ROUND(AVG(RATIO_DESCUENTO) * 100, 2) AS PCT_PRECIO_FINAL_VS_BRUTO,
+                ROUND(AVG(RATIO_PROMEDIO_GRUPO) * 100, 2) AS PCT_PROMEDIO_GRUPO,
+                ROUND(AVG(DIFERENCIA_VS_GRUPO) * 100, 2) AS DIFERENCIA_VS_GRUPO_PP
+              FROM con_grupo
+              GROUP BY
+                CLIENTE,
+                NOMBRE,
+                SUBSEGMENTO_CLIENTES,
+                DEPARTAMENTO,
+                POBLACION,
+                Material,
+                CODIGO_PRODUCTO
+            )
+            SELECT *
+            FROM sin_duplicados
+            ORDER BY DIFERENCIA_VS_GRUPO_PP DESC
+            LIMIT 5;
+      evaluation_note:
+        - "Devuelve una tabla con los 5 clientes de referencia para comparación con clientes similares."
+
+    - id: ""
+      question:
+        - "Dame el precio promedio ponderado de las ventas realizadas el mes pasado (Agosto 2026) a nivel de Presentación y Tipo de Negocio."
+      answer:
+        - format: "SQL"
+          content: |
+            SELECT
+              TIPO_DE_NEGOCIO,
+              SUM(
+                CASE
+                  WHEN PRESENTACION = 'SACOS'
+                  THEN VALOR_NETO_PRODUCTO
+                END
+              ) /
+              NULLIF(
+                SUM(
+                  CASE
+                    WHEN PRESENTACION = 'SACOS'
+                    THEN TONELADAS
+                  END
+                ),
+                0
+              ) AS SACOS,
+              SUM(
+                CASE
+                  WHEN PRESENTACION = 'GRANEL'
+                  THEN VALOR_NETO_PRODUCTO
+                END
+              ) /
+              NULLIF(
+                SUM(
+                  CASE
+                    WHEN PRESENTACION = 'GRANEL'
+                    THEN TONELADAS
+                  END
+                ),
+                0
+              ) AS GRANEL
+            FROM gld_consumption_3as_prod_hon_db.sd.zqry_zsdm03_009_hn
+            WHERE COD_PERIODO = '08/2026'
+              AND TIPO_DE_NEGOCIO IN ('Masivo', 'Industrial')
+              AND MICROMERCADO <> 'Honduras Exportacion'
+            GROUP BY TIPO_DE_NEGOCIO
+            ORDER BY TIPO_DE_NEGOCIO;
+      evaluation_note:
+        - "Devuelve una tabla con las columnas TIPO_DE_NEGOCIO, SACOS y GRANEL. Debe incluir una nota indicando que se excluyeron los registros de Honduras Exportacion."
+
+instructions:
   example_question_sqls:
     - id: ""
       question:
-        - "Pregunta de ejemplo"
+        - "¿Cuál es el precio FOB por subsegmento de cliente, material y empaque?"
       sql:
-        - "SELECT 1"
-      usageguidance:
-        - "Cuándo usar esta query"
-      parameters:
-        - name: "year"
-          typehint: "STRING"
-          default_value:
-            values:
-              - "2024"
+        - |
+          SELECT
+            SubsegmentoDestinatario,
+            Material,
+            EmpaqueDeProducto,
+            SUM(IngresoFob) AS IngresoFob_Total,
+            SUM(CantidadVendidaFacturada) AS Cantidad_Total,
+            ROUND(TRY_DIVIDE(SUM(IngresoFob), SUM(CantidadVendidaFacturada)), 2) AS PrecioFOB
+          FROM brz_dev.star_generico.rentabilidad_honduras
+          WHERE Per = '2026.06'
+          GROUP BY SubsegmentoDestinatario, Material, EmpaqueDeProducto
+          ORDER BY SubsegmentoDestinatario, Material, EmpaqueDeProducto
+      usage_guidance:
+        - "Usar para calcular precio FOB unitario a partir de rentabilidad_honduras. El precio FOB no es una columna: se obtiene dividiendo SUM(IngresoFob) entre SUM(CantidadVendidaFacturada), siempre con TRY_DIVIDE para evitar división por cero. Nunca promediar precios ya calculados por fila. Si no se define la ventana de fecha en la pregunta, devuelve la consulta para el ultimo mes registrado. La columna Per filtra el periodo en formato 'AAAA.MM'; cambiar ese valor para otros meses. Aplicable a cualquier combinación de agrupación (subsegmento, material, empaque, departamento, planta). La respuesta final debe dar explicito el filtro de fecha usado"
+              
+  text_instructions:
+    - id: ""
+      content:
+        - |
+          RENTABILIDAD SOBRE FACTURACIÓN. Usa brz_dev.star_generico.rentabilidad_honduras, que ya
+          trae la facturación con su costo al grano de factura. No rehagas el join
+          contra gld_consumption_3as_prod_hon_db.sd.zqry_zsdm03_009_hn.
+          Los indicadores de volumen, ingreso FOB y precio se calculan sobre TODAS
+          las filas. Los de costo, rentabilidad y margen SOLO sobre TIENE_COSTO = true,
+          y en ese caso declara siempre qué porcentaje del volumen y del ingreso
+          quedó cubierto por costo. Nunca presentes un margen consolidado sin
+          declarar esa cobertura.
+
+data_sources:
+  tables:
+    - identifier: "brz_dev.star_generico.rentabilidad_honduras"
+      description:
+        - "Tabla de rentabilidad de operaciones de cemento en Honduras con detalle de ingresos, costos, fletes, gastos y segmentación por negocio, cliente, material y planta. Los valores estan en dolares, para convertir en lempiras, se debe multiplicar por la columna ERatePromMth"
+      column_configs:
+        - column_name: "Negocio"
+          description:
+            - "Tipo de negocio al que pertenece la venta (ej: MASIV, INDUSTRIAL)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo de negocio"
+            - "canal"
+            - "segmento negocio"
+        - column_name: "LineaDeProducto"
+          description:
+            - "Línea de producto vendido (ej: Cemento Gris)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "línea producto"
+            - "familia producto"
+            - "línea"
+        - column_name: "CodMaterial"
+          description:
+            - "Código SAP del material o producto vendido"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código material"
+            - "cod producto"
+            - "SKU"
+        - column_name: "Material"
+          description:
+            - "Descripción del material o producto vendido (ej: CMTO GRIS ECO CEMENTO 42.5KG ARG 2C)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "producto"
+            - "cemento"
+            - "nombre material"
+        - column_name: "NoMes"
+          description:
+            - "Número del mes (1-12) del período de la transacción"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "mes"
+            - "número mes"
+            - "mes número"
+        - column_name: "Anio"
+          description:
+            - "Año del período de la transacción"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "año"
+            - "year"
+            - "periodo año"
+        - column_name: "PlantaOrigen"
+          description:
+            - "Nombre de la planta de origen de despacho del producto (ej: PLANTA RIO BLANQUITO, PLANTA PIEDRAS AZULES)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "planta origen"
+            - "planta"
+            - "centro despacho"
+        - column_name: "SegmentoDeCliente"
+          description:
+            - "Segmento de mercado del cliente (ej: MINORISTA, MAYORISTA)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "segmento cliente"
+            - "segmento"
+            - "tipo cliente"
+        - column_name: "SubsegmentoDestinatario"
+          description:
+            - "Subsegmento del cliente destinatario (ej: MINORISTA C)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "subsegmento"
+            - "sub segmento"
+            - "subsegmento cliente"
+        - column_name: "TipoDeProducto"
+          description:
+            - "Clasificación del tipo de producto (ej: 4060, USO GENERAL)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo producto"
+            - "clasificación producto"
+        - column_name: "EmpaqueDeProducto"
+          description:
+            - "Tipo de empaque o presentación del producto (ej: SACOS, GRANEL)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "empaque"
+            - "presentación"
+            - "tipo empaque"
+        - column_name: "CondicionesDeEnvio"
+          description:
+            - "Condición de envío de la mercancía: Retira (cliente recoge en planta) o Envío (despacho al cliente)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "condición envío"
+            - "modalidad entrega"
+            - "envío o retira"
+            - "incoterm"
+        - column_name: "DepartamentoDestinatario"
+          description:
+            - "Departamento geográfico de Honduras del destinatario de la mercancía"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "departamento"
+            - "depto"
+            - "región"
+        - column_name: "CiudadDestinatario"
+          description:
+            - "Ciudad de Honduras del destinatario de la mercancía"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "ciudad"
+            - "municipio"
+            - "localidad"
+        - column_name: "CantidadVendidaFacturada"
+          description:
+            - "Cantidad vendida facturada expresada en toneladas métricas"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "volumen"
+            - "toneladas"
+            - "cantidad vendida"
+            - "tons"
+        - column_name: "IngresosNetos"
+          description:
+            - "Ingresos netos de la venta en moneda local (Lempiras)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "ingresos"
+            - "ventas netas"
+            - "revenue"
+            - "ingreso neto"
+        - column_name: "TotalCashCostDeMercanciaVendida"
+          description:
+            - "Costo total de la mercancía vendida (cash cost) en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "cash cost"
+            - "costo mercancía"
+            - "COGS"
+            - "costo venta"
+        - column_name: "FleteDeTransferencia"
+          description:
+            - "Costo del flete de transferencia entre plantas en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "flete transferencia"
+            - "flete interplanta"
+            - "costo transferencia"
+        - column_name: "FleteACliente"
+          description:
+            - "Costo del flete de entrega al cliente en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "flete cliente"
+            - "costo envío"
+            - "flete despacho"
+        - column_name: "GastosDeDistribucion"
+          description:
+            - "Gastos de distribución asociados a la venta en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "gastos distribución"
+            - "distribución"
+            - "costo distribución"
+        - column_name: "GastosDeAdministracion"
+          description:
+            - "Gastos administrativos asignados a la venta en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "gastos admin"
+            - "administración"
+            - "G&A"
+        - column_name: "GastosDeVenta"
+          description:
+            - "Gastos de venta asignados a la transacción en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "gastos ventas"
+            - "costo ventas"
+            - "selling expenses"
+        - column_name: "IngresoFob"
+          description:
+            - "Ingreso FOB (Free On Board) del producto sin incluir flete, en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "ingreso FOB"
+            - "FOB"
+            - "precio FOB"
+        - column_name: "IngresoFlete"
+          description:
+            - "Ingreso por concepto de flete cobrado al cliente en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "ingreso flete"
+            - "cobro flete"
+        - column_name: "Descuentos"
+          description:
+            - "Valor de descuentos aplicados a la venta en Lempiras (valores negativos representan descuento)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "descuento"
+            - "rebaja"
+            - "bonificación"
+        - column_name: "TpVenta"
+          description:
+            - "Tipo de venta: Nacional o Exportación"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo venta"
+            - "mercado"
+            - "nacional o exportación"
+        - column_name: "POrigenOriginal"
+          description:
+            - "Nombre de la planta de origen original del producto antes de transferencias"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "planta origen original"
+            - "planta original"
+        - column_name: "NumCliente"
+          description:
+            - "Código numérico identificador del cliente"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "número cliente"
+            - "cod cliente"
+            - "ID cliente"
+        - column_name: "Cliente"
+          description:
+            - "Nombre completo del cliente comprador"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "nombre cliente"
+            - "comprador"
+            - "razón social"
+        - column_name: "NumAsesor"
+          description:
+            - "Código numérico identificador del asesor de ventas"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "número asesor"
+            - "cod asesor"
+        - column_name: "Asesor"
+          description:
+            - "Nombre completo del asesor de ventas asignado"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "asesor ventas"
+            - "vendedor"
+            - "representante"
+        - column_name: "IdentifSAsig"
+          description:
+            - "Identificador de asignación del registro (ej: Comp para compensación)"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "identificador asignación"
+            - "tipo asignación"
+        - column_name: "CcCostoDirecto"
+          description:
+            - "Componente de costo directo de producción en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "costo directo"
+            - "costo producción directo"
+        - column_name: "CcCostoIndirecto"
+          description:
+            - "Componente de costo indirecto de producción en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "costo indirecto"
+            - "overhead"
+        - column_name: "CcCostoMtto"
+          description:
+            - "Componente de costo de mantenimiento de planta en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "costo mantenimiento"
+            - "mantenimiento"
+            - "mtto"
+        - column_name: "CcOtrosCostos"
+          description:
+            - "Otros costos adicionales no clasificados en las categorías principales, en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "otros costos"
+            - "costos varios"
+        - column_name: "CcCostoFleteTraslado"
+          description:
+            - "Componente de costo de flete de traslado en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "costo flete traslado"
+            - "flete traslado"
+        - column_name: "CcCostoNiif16"
+          description:
+            - "Componente de costo según norma NIIF 16 (arrendamientos) en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "costo NIIF 16"
+            - "NIIF 16"
+            - "IFRS 16"
+            - "arrendamiento"
+        - column_name: "NumCentro"
+          description:
+            - "Código del centro logístico o de distribución (ej: D201, 2050)"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "número centro"
+            - "cod centro"
+        - column_name: "Centro"
+          description:
+            - "Nombre del centro logístico o planta de distribución (ej: CD PT HONDURAS, PLANTA RIO BLANQUITO)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "centro logístico"
+            - "centro distribución"
+            - "CEDI"
+        - column_name: "AsesorComercial"
+          description:
+            - "Nombre del asesor comercial responsable de la cuenta"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "asesor comercial"
+            - "comercial"
+            - "ejecutivo comercial"
+        - column_name: "IngresoFobPpto"
+          description:
+            - "Ingreso FOB presupuestado para la venta en Lempiras"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "FOB presupuesto"
+            - "ingreso FOB ppto"
+            - "presupuesto FOB"
+        - column_name: "VolumenPpto"
+          description:
+            - "Volumen presupuestado en toneladas métricas"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "volumen presupuesto"
+            - "toneladas ppto"
+            - "presupuesto volumen"
+        - column_name: "FleteTransfCe"
+          description:
+            - "Valor del flete de transferencia asignado al centro de costo"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "flete transferencia centro"
+        - column_name: "FTransferencia"
+          description:
+            - "Flag que indica si hubo flete de transferencia entre plantas (FTransferencia / NoFTransferencia)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "flag transferencia"
+            - "indicador transferencia"
+        - column_name: "FCliente"
+          description:
+            - "Flag que indica si hubo flete cobrado al cliente"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "flag flete cliente"
+            - "indicador flete cliente"
+        - column_name: "FRetira"
+          description:
+            - "Flag que indica si el cliente retira el producto en planta (Retira / Envío)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "flag retira"
+            - "indicador retira"
+        - column_name: "CcFlete"
+          description:
+            - "Clasificación combinada del tipo de flete (ej: FTransferencia_Retira, NoFTransferencia_Retira)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "centro costo flete"
+            - "categoría flete"
+        - column_name: "GtosDistribucionCe"
+          description:
+            - "Valor de gastos de distribución asignado al centro de costo"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "gastos distribución centro"
+            - "distribución CE"
+        - column_name: "ERatePromMth"
+          description:
+            - "Tasa de cambio promedio mensual (Lempiras por USD)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "tasa cambio"
+            - "tipo cambio"
+            - "exchange rate"
+            - "tasa promedio"
+        - column_name: "Per"
+          description:
+            - "Código del período contable en formato AAAA.MM (ej: 2021.06)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "periodo"
+            - "período contable"
+        - column_name: "PeriodoFecha"
+          description:
+            - "Fecha del primer día del período contable (tipo date)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "fecha periodo"
+            - "fecha"
+            - "mes periodo"
+        - column_name: "AuditFechaCarga"
+          description:
+            - "Fecha y hora de auditoría en que el registro fue cargado o actualizado en el sistema"
+          enable_entity_matching: false
+          enable_format_assistance: false
+          synonyms:
+            - "fecha carga"
+            - "audit"
+            - "fecha actualización"
+
+
+    - identifier: "gld_consumption_3as_prod_hon_db.sd.zqry_zsdm03_009_hn"
+      description:
+        - "Tabla de ventas de cemento en Honduras con detalle de facturación, precios promedio, toneladas y segmentación por tipo de negocio, asesor comercial, planta logística y cliente."
+      column_configs:
+        - column_name: "FECHA_FACTURA"
+          description:
+            - "Fecha en la que se emitió la factura de venta"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "fecha"
+            - "fecha de facturación"
+            - "fecha factura"
+        - column_name: "COD_PERIODO"
+          description:
+            - "Código del período contable en formato MM/AAAA"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "periodo"
+            - "mes"
+            - "período contable"
+        - column_name: "COD_TIPO_DE_NEGOCIO"
+          description:
+            - "Código identificador del tipo de negocio (ej: H01, H02)"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código tipo negocio"
+            - "cod negocio"
+        - column_name: "TIPO_DE_NEGOCIO"
+          description:
+            - "Nombre descriptivo del tipo de negocio (ej: MASIVO, INDUSTRIAL)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo negocio"
+            - "negocio"
+            - "canal"
+        - column_name: "COD_ASESOR_COMERCIAL"
+          description:
+            - "Código identificador del asesor comercial responsable de la venta"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código asesor"
+            - "cod asesor"
+        - column_name: "ASESOR_COMERCIAL"
+          description:
+            - "Nombre completo del asesor comercial responsable de la venta"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "asesor"
+            - "vendedor"
+            - "comercial"
+        - column_name: "DEPARTAMENTO"
+          description:
+            - "Departamento geográfico de Honduras donde se realizó la venta"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "depto"
+            - "región"
+            - "zona geográfica"
+        - column_name: "CIUDAD"
+          description:
+            - "Ciudad de Honduras donde se realizó la venta"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "municipio"
+            - "localidad"
+        - column_name: "ENVIO/RETIRA"
+          description:
+            - "Modalidad de entrega del producto: ENVIO (despacho al cliente) o RETIRA (cliente retira en planta)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "modalidad entrega"
+            - "tipo despacho"
+            - "envío o retira"
+            - "incoterm"
+        - column_name: "COD_MATERIAL"
+          description:
+            - "Código SAP del material o producto vendido"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código material"
+            - "cod producto"
+            - "SKU"
+        - column_name: "MATERIAL"
+          description:
+            - "Descripción del material o producto vendido"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "producto"
+            - "cemento"
+            - "nombre material"
+        - column_name: "MICROMERCADO"
+          description:
+            - "Zona de micromercado geográfico asignada para segmentación comercial"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "micro mercado"
+            - "zona comercial"
+        - column_name: "COD_PLANTA_LOGISTICA"
+          description:
+            - "Código identificador de la planta logística de despacho"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código planta"
+            - "cod planta"
+        - column_name: "PLANTA_LOGISTICA"
+          description:
+            - "Nombre de la planta logística desde donde se despacha el producto (ej: PLANTA SAN LORENZO, PLANTA PIEDRAS AZULES)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "planta"
+            - "centro de despacho"
+            - "planta de despacho"
+            - "PIA"
+        - column_name: "PRESENTACION"
+          description:
+            - "Tipo de presentación del producto (ej: SACOS, GRANEL)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "empaque"
+            - "forma de entrega"
+            - "tipo presentación"
+        - column_name: "COD_RESPONSABLE_DE_PAGO"
+          description:
+            - "Código del cliente responsable del pago de la factura"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código responsable pago"
+            - "cod pagador"
+        - column_name: "RESPONSABLE_DE_PAGO"
+          description:
+            - "Nombre del cliente responsable del pago de la factura"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "pagador"
+            - "cliente pagador"
+            - "responsable pago"
+        - column_name: "SEGMENTO"
+          description:
+            - "Segmento de mercado al que pertenece el cliente (ej: MAYORISTA)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "segmento de mercado"
+            - "tipo cliente"
+        - column_name: "SUBSEGMENTO"
+          description:
+            - "Subsegmento de mercado, nivel de detalle adicional dentro del segmento"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "sub segmento"
+            - "subsegmento de mercado"
+        - column_name: "TONELADAS"
+          description:
+            - "Cantidad de producto vendido expresada en toneladas métricas"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "tons"
+            - "volumen"
+            - "cantidad"
+            - "peso"
+        - column_name: "VALOR_FLETE"
+          description:
+            - "Valor del flete o costo de transporte asociado a la venta, en moneda local (Lempiras)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "flete"
+            - "costo transporte"
+            - "costo envío"
+        - column_name: "VALOR_NETO_PRODUCTO"
+          description:
+            - "Valor neto del producto facturado sin incluir flete, en moneda local (Lempiras)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "valor neto"
+            - "ventas netas"
+            - "ingreso neto"
+            - "valor producto"
+        - column_name: "PRECIO_PROMEDIO_REAL"
+          description:
+            - "Precio promedio real por tonelada del producto vendido, en moneda local (Lempiras/ton)"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "precio promedio"
+            - "precio unitario"
+            - "precio por tonelada"
+            - "precio real"
+        - column_name: "COD_DESTINATARIO_MERCANCIA"
+          description:
+            - "Código del cliente que recibe físicamente la mercancía"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código destinatario"
+            - "cod destinatario"
+        - column_name: "DESTINATARIO_MERCANCIA"
+          description:
+            - "Nombre del cliente que recibe físicamente la mercancía"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "destinatario"
+            - "receptor mercancía"
+            - "cliente entrega"
+        - column_name: "COD_SOLICITANTE"
+          description:
+            - "Código del cliente que solicita o genera el pedido de compra"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "código solicitante"
+            - "cod solicitante"
+        - column_name: "SOLICITANTE"
+          description:
+            - "Nombre del cliente que solicita o genera el pedido de compra"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "solicitante pedido"
+            - "cliente solicitante"
+            - "comprador"
+
+    - identifier: "gld_star_prod.hon.vw_chequeo_precio_inventario_hon"
+      description:
+        - "Vista de chequeo de precios e inventario con información de clientes, proveedores, marcas, precios de compra y venta, y ubicación geográfica de puntos de venta en Honduras."
+      column_configs:
+        - column_name: "Nombre_Propietario"
+          description:
+            - "Nombre del asesor o propietario de la cuenta del cliente en el CRM"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "propietario"
+            - "asesor"
+            - "dueño cuenta"
+        - column_name: "Id_Cuenta"
+          description:
+            - "Identificador único de la cuenta del cliente en Salesforce"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "ID cuenta"
+            - "cuenta Salesforce"
+        - column_name: "Id_Chequeo"
+          description:
+            - "Identificador único del registro de chequeo de precio e inventario en Salesforce"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "ID chequeo"
+            - "chequeo ID"
+        - column_name: "Id_Evento_Chequeo"
+          description:
+            - "Identificador del evento asociado al chequeo de precio e inventario"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "ID evento"
+            - "evento chequeo"
+        - column_name: "Codigo_Cliente"
+          description:
+            - "Código numérico identificador del cliente (código SAP)"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "cod cliente"
+            - "número cliente"
+            - "ID cliente"
+        - column_name: "Tipo_Negocio"
+          description:
+            - "Tipo de negocio del cliente (ej: Masivo, Industrial)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo negocio"
+            - "canal"
+            - "negocio cliente"
+        - column_name: "Fecha_Creacion"
+          description:
+            - "Fecha de creación del registro de chequeo de precio e inventario"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "fecha creación"
+            - "fecha chequeo"
+            - "fecha"
+        - column_name: "Nombre_Chequeo_PrecioInventario"
+          description:
+            - "Código o nombre único del chequeo de precio e inventario (ej: CPI-00023098)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "nombre chequeo"
+            - "CPI"
+            - "chequeo precio"
+        - column_name: "Asunto"
+          description:
+            - "Asunto o motivo del chequeo de precio e inventario"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "motivo"
+            - "tema"
+            - "razón chequeo"
+        - column_name: "Estado_Agenda_Visitas"
+          description:
+            - "Estado actual de la agenda de visitas asociada al chequeo"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "estado visita"
+            - "estado agenda"
+            - "status visita"
+        - column_name: "Proveedor"
+          description:
+            - "Nombre del proveedor o fabricante del producto chequeado (ej: Argos, Bijao)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "fabricante"
+            - "supplier"
+            - "marca proveedor"
+        - column_name: "Marca"
+          description:
+            - "Marca específica del producto chequeado (ej: Argos GU, Eco Multiproposito, Bijao GU)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "marca producto"
+            - "brand"
+            - "nombre marca"
+        - column_name: "Precio_Flete"
+          description:
+            - "Precio de flete del producto (en moneda local) desde el proveedor hasta el punto de venta, y con impuesto, para quitar el impuesto se divide por 1.15"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "flete"
+            - "costo flete"
+            - "precio transporte"
+        - column_name: "Precio_Compra"
+          description:
+            - "Precio de compra del producto al proveedor (en moneda local), registrado en el punto de venta, y con impuesto, para quitar el impuesto se divide por 1.15"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "precio compra"
+            - "costo compra"
+            - "precio adquisición"
+        - column_name: "Precio_Venta"
+          description:
+            - "Precio de venta al público del producto (en moneda local) registrado en el punto de venta, y con impuesto, para quitar el impuesto se divide por 1.15"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "precio venta"
+            - "PVP"
+            - "precio al público"
+            - "precio consumidor"
+        - column_name: "Negocio"
+          description:
+            - "Categoría de negocio del producto chequeado (ej: Cemento, Agregados). Aplicar siempre el filtro Negocio = Cemento"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "negocio"
+            - "categoría producto"
+            - "línea negocio"
+        - column_name: "Tipo_Registro_Cuenta"
+          description:
+            - "Tipo de registro de la cuenta del cliente en el CRM"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "tipo registro"
+            - "tipo cuenta"
+        - column_name: "Id_Agenda_Visita"
+          description:
+            - "Identificador de la agenda de visita asociada al chequeo (ej: AV-202305-3176)"
+          enable_entity_matching: true
+          enable_format_assistance: false
+          synonyms:
+            - "ID visita"
+            - "agenda visita"
+            - "código visita"
+        - column_name: "Grupo_Clientes_Segmento"
+          description:
+            - "Segmento o grupo de clasificación del cliente (ej: 30 - MINORISTA, SIN CLASIFICACIÓN)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "segmento cliente"
+            - "grupo cliente"
+            - "segmento"
+        - column_name: "Grupo_Precios_SubSegmento"
+          description:
+            - "Código del grupo de precios o subsegmento del cliente (ej: D201, 2040)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "subsegmento"
+            - "grupo precios"
+            - "sub segmento"
+        - column_name: "Municipio"
+          description:
+            - "Municipio de Honduras donde se ubica el punto de venta del cliente"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "ciudad"
+            - "localidad"
+            - "municipio cliente"
+        - column_name: "Departamento"
+          description:
+            - "Departamento geográfico de Honduras donde se ubica el punto de venta del cliente"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "depto"
+            - "región"
+            - "departamento cliente"
+        - column_name: "Oficina_Ventas"
+          description:
+            - "Código de la oficina de ventas responsable del cliente (ej: HLIT, PA00)"
+          enable_entity_matching: true
+          enable_format_assistance: true
+          synonyms:
+            - "oficina ventas"
+            - "sucursal"
+            - "oficina comercial"
+        - column_name: "Direccion"
+          description:
+            - "Dirección física del punto de venta del cliente"
+          enable_entity_matching: false
+          enable_format_assistance: true
+          synonyms:
+            - "dirección"
+            - "ubicación"
+            - "domicilio"
+        - column_name: "Latitud"
+          description:
+            - "Coordenada de latitud GPS del punto de venta del cliente"
+          enable_entity_matching: false
+          enable_format_assistance: false
+          synonyms:
+            - "lat"
+            - "latitud GPS"
+            - "coordenada latitud"
+        - column_name: "Longitud"
+          description:
+            - "Coordenada de longitud GPS del punto de venta del cliente"
+          enable_entity_matching: false
+          enable_format_assistance: false
+          synonyms:
+            - "lon"
+            - "lng"
+            - "longitud GPS"
+            - "coordenada longitud"
